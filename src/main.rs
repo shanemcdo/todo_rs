@@ -46,9 +46,15 @@ impl ListType {
 }
 
 #[derive(Copy, Clone, Debug)]
+enum InputDestination {
+    NewItem,
+    EditItem,
+}
+
+#[derive(Copy, Clone, Debug)]
 enum InputMode {
     Normal,
-    Insert,
+    Insert(InputDestination),
 }
 
 fn word_wrap(s: String, max_length: usize) -> Vec<String> {
@@ -189,9 +195,15 @@ impl ListApp{
                 self.draw_done();
                 self.go_to_current_index();
             }
-            InputMode::Insert => {
-                write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
-                    .expect("Could not print message");
+            InputMode::Insert(dest) => match dest {
+                InputDestination::NewItem => {
+                    write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
+                        .expect("Could not print message");
+                },
+                InputDestination::EditItem => {
+                    write!(self.stdout, "{} {}", "Edit item:".green().bold(), self.input_string)
+                        .expect("Could not print message");
+                },
             }
         }
         self.stdout.flush().expect("Could not flush");
@@ -441,7 +453,15 @@ impl ListApp{
                     (Key::Char('x') | Key::Char('\n'), ListType::Done) => self.uncheck_item(),
                     (Key::Char('d') | Key::Backspace, ListType::Done) => self.delete_item(),
                     (Key::Char(ch), _) => match ch {
-                        'a' | 'i' => self.input_mode = InputMode::Insert,
+                        'e' => {
+                            self.input_mode = InputMode::Insert(InputDestination::EditItem);
+                            let list = match self.list_type {
+                                ListType::Todo => &self.todo,
+                                ListType::Done => &self.done,
+                            };
+                            self.input_string = list[self.current_index as usize].clone();
+                        },
+                        'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
                         'j' => self.move_down(),
                         'J' => self.shift_down(),
@@ -451,20 +471,29 @@ impl ListApp{
                     }
                     _ => return false,
                 }
-                InputMode::Insert => match key {
-                    Key::Esc => {
-                        self.input_mode = InputMode::Normal;
-                        self.input_string = "".to_string();
-                    }
-                    Key::Backspace => {self.input_string.pop().unwrap_or('\0');},
-                    Key::Char('\n') => {
-                        self.input_mode = InputMode::Normal;
-                        let mut s = "".to_string();
-                        std::mem::swap(&mut s, &mut self.input_string);
-                        self.todo.push(s);
-                    },
-                    Key::Char(ch) => self.input_string.push(ch),
-                    _ => return false,
+                InputMode::Insert(dest) => match key {
+                        Key::Esc => {
+                            self.input_mode = InputMode::Normal;
+                            self.input_string = "".to_string();
+                        }
+                        Key::Backspace => {self.input_string.pop().unwrap_or('\0');},
+                        Key::Char('\n') => {
+                            self.input_mode = InputMode::Normal;
+                            let mut s = "".to_string();
+                            std::mem::swap(&mut s, &mut self.input_string);
+                            match dest {
+                                InputDestination::NewItem => self.todo.push(s),
+                                InputDestination::EditItem => {
+                                    let list = match self.list_type {
+                                        ListType::Todo => &mut self.todo,
+                                        ListType::Done => &mut self.done,
+                                    };
+                                    list[self.current_index as usize] = s;
+                                },
+                            }
+                        },
+                        Key::Char(ch) => self.input_string.push(ch),
+                        _ => return false,
                 }
             }
         } else {
