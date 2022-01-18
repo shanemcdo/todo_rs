@@ -247,6 +247,44 @@ impl ListApp{
         }
     }
 
+    fn shift_up(&mut self){
+        let list = match self.list_type {
+            ListType::Todo => &mut self.todo,
+            ListType::Done => &mut self.done,
+        };
+        let len = list.len();
+        if len <= 0 {
+            return;
+        }
+        let idx = self.current_index as usize;
+        if idx > 0 {
+            list.swap(idx, idx - 1);
+        } else {
+            let item = list.remove(0);
+            list.push(item);
+        }
+        self.move_up();
+    }
+
+    fn shift_down(&mut self){
+        let list = match self.list_type {
+            ListType::Todo => &mut self.todo,
+            ListType::Done => &mut self.done,
+        };
+        let len = list.len();
+        if len <= 0 {
+            return;
+        }
+        let idx = self.current_index as usize;
+        if idx + 1 < len {
+            list.swap(idx, idx + 1);
+        } else {
+            let item = list.remove(len - 1);
+            list.insert(0, item);
+        }
+        self.move_down();
+    }
+    
     fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
             match (key, self.list_type) {
@@ -257,7 +295,9 @@ impl ListApp{
                 (Key::Char(ch), list_type) => match (ch, list_type) {
                     ('h' | 'l', _) => self.swap_list(),
                     ('j', _) => self.move_down(),
+                    ('J', _) => self.shift_down(),
                     ('k', _) => self.move_up(),
+                    ('K', _) => self.shift_up(),
                     _ => return false,
                 }
                 _ => return false,
