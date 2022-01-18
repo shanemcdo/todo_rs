@@ -48,6 +48,7 @@ impl ListType {
 #[derive(Copy, Clone, Debug)]
 enum InputDestination {
     NewItem,
+    NewItemBefore,
     NewItemAfter,
     EditItem,
 }
@@ -201,6 +202,10 @@ impl ListApp{
             InputMode::Insert(dest) => match dest {
                 InputDestination::NewItem => {
                     write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
+                        .expect("Could not print message");
+                },
+                InputDestination::NewItemBefore => {
+                    write!(self.stdout, "{} {}", "New item before current:".magenta().bold(), self.input_string)
                         .expect("Could not print message");
                 },
                 InputDestination::NewItemAfter => {
@@ -469,6 +474,7 @@ impl ListApp{
                             self.input_string = list[self.current_index as usize].clone();
                             self.input_string_index = self.input_string.len() - 1;
                         },
+                        'O' => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
                         'o' => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
@@ -493,7 +499,6 @@ impl ListApp{
                         }
                     },
                     Key::Left => {
-                        println!("AHHHH");
                         if self.input_string_index >= 1 {
                             self.input_string_index -= 1;
                         }
@@ -512,8 +517,12 @@ impl ListApp{
                         std::mem::swap(&mut s, &mut self.input_string);
                         match dest {
                             InputDestination::NewItem => self.todo.push(s),
-                            InputDestination::NewItemAfter => {
+                            InputDestination::NewItemBefore => {
                                 let idx = self.current_index as usize; // appease borrow checker
+                                self.todo.insert(idx, s);
+                            }
+                            InputDestination::NewItemAfter => {
+                                let idx = self.current_index as usize + 1; // appease borrow checker
                                 self.todo.insert(idx, s);
                             }
                             InputDestination::EditItem => {
