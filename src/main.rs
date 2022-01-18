@@ -275,6 +275,7 @@ fn main() {
         let mut list = load_list(TODO_LIST);
         list.push(args.add);
         save_list(TODO_LIST, &list);
+    } else {
+        ListApp::new().run();
     }
-    ListApp::new().run();
 }
