@@ -133,6 +133,10 @@ impl ListApp{
         }
     }
 
+    fn get_max_word_wrap_length(&self) -> usize{
+        self.terminal_size.0 as usize / 2 - 4
+    }
+
     fn go_to_current_index(&mut self){
         let list = match self.list_type {
             ListType::Todo => &mut self.todo,
@@ -141,8 +145,9 @@ impl ListApp{
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line plus 1
         let mut pos = 1;
+        let max = self.get_max_word_wrap_length()
         for i in 0..self.current_index {
-            pos += word_wrap(list[i as usize].clone(), self.terminal_size.0 as usize / 2 - 4).len();
+            pos += word_wrap(list[i as usize].clone(), max).len();
             println!("\n{}", pos);
         }
         let x = match self.list_type {
@@ -183,7 +188,7 @@ impl ListApp{
     }
 
     fn draw_todo(&mut self){
-        let max = self.terminal_size.0 / 2 - 4;
+        let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
         for line in &self.todo {
             if line.len() < max as usize {
@@ -221,7 +226,7 @@ impl ListApp{
 
     fn draw_done(&mut self){
         let x = self.terminal_size.0 / 2;
-        let max = self.terminal_size.0 / 2 - 4;
+        let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
         for line in &self.done {
             if line.len() < max as usize {
