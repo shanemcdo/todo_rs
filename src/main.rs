@@ -140,18 +140,33 @@ impl ListApp{
         }
     }
 
+    fn go_to_current_index(&mut self){
+        let list = match self.list_type {
+            ListType::Todo => &mut self.todo,
+            ListType::Done => &mut self.done,
+        };
+        // the logic is the position of the current index is the sum
+        // is the sum of all the lines before the current line plus 1
+        let mut pos = 1;
+        for i in 0..self.current_index {
+            pos += word_wrap(list[i as usize].clone(), self.terminal_size.0 as usize / 2).len();
+        }
+        println!("{}", pos);
+        let x = match self.list_type {
+            ListType::Todo => 1,
+            ListType::Done => self.terminal_size.0 / 2,
+        };
+        write!(self.stdout, "{}", termion::cursor::Goto(x, pos as u16))
+            .expect("Could not move cursor");
+    }
+
     fn redraw(&mut self){
         self.clear();
         match self.input_mode {
             InputMode::Normal => {
                 self.draw_todo();
                 self.draw_done();
-                let x = match self.list_type {
-                    ListType::Todo => 1,
-                    ListType::Done => self.terminal_size.0 / 2,
-                };
-                write!(self.stdout, "{}", termion::cursor::Goto(x, self.current_index + 1))
-                    .expect("Could not move cursor");
+                self.go_to_current_index();
             }
             InputMode::Insert => {
                 write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
@@ -219,8 +234,9 @@ impl ListApp{
             if line.len() < max as usize {
                 write!(
                     self.stdout,
-                    "{}[ ] {}",
+                    "{}[{}] {}",
                     termion::cursor::Goto(x, idx + 1),
+                    "X".red().bold(),
                     line.color(colorize(idx as usize)),
                 ).expect("Could not write line");
                 idx += 1;
