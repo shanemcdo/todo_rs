@@ -142,7 +142,8 @@ impl ListApp{
         // is the sum of all the lines before the current line plus 1
         let mut pos = 1;
         for i in 0..self.current_index {
-            pos += word_wrap(list[i as usize].clone(), self.terminal_size.0 as usize / 2).len();
+            pos += word_wrap(list[i as usize].clone(), self.terminal_size.0 as usize / 2 - 4).len();
+            println!("\n{}", pos);
         }
         let x = match self.list_type {
             ListType::Todo => 1,
