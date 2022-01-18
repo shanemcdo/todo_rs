@@ -45,6 +45,12 @@ impl ListType {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+enum InputMode {
+    Normal,
+    Insert,
+}
+
 fn save_list(filename: &str, list: &Vec<String>) {
     let mut file = std::fs::File::create(filename).expect("Could not create file");
     for line in list {
@@ -90,7 +96,8 @@ struct ListApp {
     todo: Vec<String>,
     done: Vec<String>,
     current_index: u16,
-    list_type: ListType
+    list_type: ListType,
+    input_mode: InputMode,
 }
 
 impl ListApp{
@@ -103,6 +110,7 @@ impl ListApp{
             done: load_list(DONE_LIST),
             current_index: 0,
             list_type: ListType::Todo,
+            input_mode: InputMode::Normal,
         }
     }
 
@@ -287,20 +295,30 @@ impl ListApp{
     
     fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
-            match (key, self.list_type) {
-                (Key::Char('q') | Key::Esc, _) => self.running = false,
-                (Key::Char('d') | Key::Char('x') | Key::Insert, ListType::Todo) => self.check_item(),
-                (Key::Char('x') | Key::Insert, ListType::Done) => self.uncheck_item(),
-                (Key::Char('d') | Key::Delete, ListType::Done) => self.delete_item(),
-                (Key::Char(ch), list_type) => match (ch, list_type) {
-                    ('h' | 'l', _) => self.swap_list(),
-                    ('j', _) => self.move_down(),
-                    ('J', _) => self.shift_down(),
-                    ('k', _) => self.move_up(),
-                    ('K', _) => self.shift_up(),
+            match self.input_mode {
+                InputMode::Normal => match (key, self.list_type) {
+                    (Key::Char('q') | Key::Esc, _) => self.running = false,
+                    (Key::Char('d') | Key::Char('x') | Key::Insert, ListType::Todo) => self.check_item(),
+                    (Key::Char('x') | Key::Insert, ListType::Done) => self.uncheck_item(),
+                    (Key::Char('d') | Key::Backspace, ListType::Done) => self.delete_item(),
+                    (Key::Char(ch), _) => match ch {
+                        'a' | 'i' => self.input_mode = InputMode::Insert,
+                        'h' | 'l' => self.swap_list(),
+                        'j' => self.move_down(),
+                        'J' => self.shift_down(),
+                        'k' => self.move_up(),
+                        'K' => self.shift_up(),
+                        _ => return false,
+                    }
                     _ => return false,
                 }
-                _ => return false,
+                InputMode::Insert => match key {
+                    Key::Esc => self.input_mode = InputMode::Normal,
+                    Key::Backspace => (),
+                    Key::Insert => (),
+                    Key::Char(ch) => (),
+                    _ => return false,
+                }
             }
         } else {
             return false;
