@@ -299,7 +299,9 @@ impl ListApp{
         }
         self.move_down();
     }
-    
+
+    /// handle keyboard input
+    /// returns true if redraw needs to be called again, otherwise returns false
     fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
             match self.input_mode {
