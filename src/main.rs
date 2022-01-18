@@ -97,7 +97,29 @@ fn colorize(index: usize) -> Color {
 
 /// A program that acts as a todo list
 #[derive(Debug, StructOpt)]
-#[structopt(name = "todo")]
+#[structopt(
+    name = "todo",
+    usage = "todo [options]",
+    about = r#"A todo program that tracks a two list of completed and uncompleted items
+    environment variables TODO_LIST and TODO_DONE_LIST must be paths to text files to be used
+    controls:
+        NORMAL MODE:
+            q, Esc       ->  Quit
+            d, x, Enter  ->  Move item to completed (when hovering todos)
+            x, Enter     ->  Move item to todo (when hovering completed)
+            d            ->  Delete item from completed
+            a, i         ->  Enter insert mode
+            h, l         ->  Move from todo to completed
+            j            ->  Move down on a list
+            k            ->  Move up on a list
+            J            ->  Drag an element down on a list
+            K            ->  Drag an element up on a list
+        INSERT MODE:
+            Esc          ->  Exit insert mode
+            Enter        ->  Add writen todo to list
+            Backspace    ->  Remove a character from the label
+            other keys   ->  write label for todo"#
+    )]
 struct Args {
     /// Directly add an item to the todo list
     #[structopt(short, long, default_value = "")]
@@ -415,7 +437,7 @@ impl ListApp{
             match self.input_mode {
                 InputMode::Normal => match (key, self.list_type) {
                     (Key::Char('q') | Key::Esc, _) => self.running = false,
-                    (Key::Char('d') | Key::Char('x') | Key::Insert, ListType::Todo) => self.check_item(),
+                    (Key::Char('d') | Key::Char('x') | Key::Char('\n'), ListType::Todo) => self.check_item(),
                     (Key::Char('x') | Key::Char('\n'), ListType::Done) => self.uncheck_item(),
                     (Key::Char('d') | Key::Backspace, ListType::Done) => self.delete_item(),
                     (Key::Char(ch), _) => match ch {
