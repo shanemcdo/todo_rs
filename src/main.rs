@@ -95,13 +95,6 @@ fn colorize(index: usize) -> Color {
     COLORS[index % COLORS_LEN].clone()
 }
 
-fn colorize_list(list: &Vec<String>) -> Vec<ColoredString> {
-    list.into_iter()
-        .enumerate()
-        .map(|(index, string)| string.color(colorize(index)))
-        .collect()
-}
-
 /// A program that acts as a todo list
 #[derive(Debug, StructOpt)]
 #[structopt(name = "todo")]
