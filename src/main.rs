@@ -145,7 +145,8 @@ impl ListApp{
         };
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line plus 1
-        let mut pos = 1;
+        // plus 1 again for the title offset
+        let mut pos = 2;
         for i in 0..self.current_index {
             pos += word_wrap(list[i as usize].clone(), max).len();
         }
@@ -161,6 +162,7 @@ impl ListApp{
         self.clear();
         match self.input_mode {
             InputMode::Normal => {
+                self.draw_title();
                 self.draw_todo();
                 self.draw_done();
                 self.go_to_current_index();
@@ -186,6 +188,21 @@ impl ListApp{
         self.clear();
     }
 
+    fn draw_title(&mut self){
+        write!(
+            self.stdout,
+            "{}[{}]",
+            termion::cursor::Goto(1, 1),
+            "Todo".green().bold(),
+        ).expect("Could not write to stdout");
+        write!(
+            self.stdout,
+            "{}[{}]",
+            termion::cursor::Goto(self.terminal_size.0 / 2, 1),
+            "Completed".red().bold(),
+        ).expect("Could not write to stdout");
+    }
+
     fn draw_todo(&mut self){
         let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
@@ -194,7 +211,7 @@ impl ListApp{
                 write!(
                     self.stdout,
                     "{}[ ] {}",
-                    termion::cursor::Goto(1, idx + 1),
+                    termion::cursor::Goto(1, idx + 2),
                     line.color(colorize(idx as usize)),
                 ).expect("Could not write line");
                 idx += 1;
@@ -206,14 +223,14 @@ impl ListApp{
                         write!(
                             self.stdout,
                             "{}[ ] {}",
-                            termion::cursor::Goto(1, idx + 1),
+                            termion::cursor::Goto(1, idx + 2),
                             subline.color(colorize(idx as usize)),
                         ).expect("Could not write line");
                     } else {
                         write!(
                             self.stdout,
                             "{}    {}",
-                            termion::cursor::Goto(1, idx + 1),
+                            termion::cursor::Goto(1, idx + 2),
                             subline.color(colorize(idx as usize)),
                         ).expect("Could not write line");
                     }
@@ -232,7 +249,7 @@ impl ListApp{
                 write!(
                     self.stdout,
                     "{}[{}] {}",
-                    termion::cursor::Goto(x, idx + 1),
+                    termion::cursor::Goto(x, idx + 2),
                     "X".red().bold(),
                     line.color(colorize(idx as usize)),
                 ).expect("Could not write line");
@@ -245,14 +262,14 @@ impl ListApp{
                         write!(
                             self.stdout,
                             "{}[ ] {}",
-                            termion::cursor::Goto(x, idx + 1),
+                            termion::cursor::Goto(x, idx + 2),
                             subline.color(colorize(idx as usize)),
                         ).expect("Could not write line");
                     } else {
                         write!(
                             self.stdout,
                             "{}    {}",
-                            termion::cursor::Goto(x, idx + 1),
+                            termion::cursor::Goto(x, idx + 2),
                             subline.color(colorize(idx as usize)),
                         ).expect("Could not write line");
                     }
