@@ -121,6 +121,7 @@ struct ListApp {
     list_type: ListType,
     input_mode: InputMode,
     input_string: String,
+    terminal_size: (u16, u16),
 }
 
 impl ListApp{
@@ -135,6 +136,7 @@ impl ListApp{
             list_type: ListType::Todo,
             input_mode: InputMode::Normal,
             input_string: "".to_string(),
+            terminal_size: termion::terminal_size().expect("Could not get terminal size"),
         }
     }
 
@@ -142,11 +144,13 @@ impl ListApp{
         self.clear();
         match self.input_mode {
             InputMode::Normal => {
-                match self.list_type {
-                    ListType::Todo => self.draw_todo(),
-                    ListType::Done => self.draw_done(),
-                }
-                write!(self.stdout, "{}", termion::cursor::Goto(1, self.current_index + 1))
+                self.draw_todo();
+                self.draw_done();
+                let x = match self.list_type {
+                    ListType::Todo => 1,
+                    ListType::Done => self.terminal_size.0 / 2,
+                };
+                write!(self.stdout, "{}", termion::cursor::Goto(x, self.current_index + 1))
                     .expect("Could not move cursor");
             }
             InputMode::Insert => {
@@ -160,6 +164,7 @@ impl ListApp{
     fn run(&mut self) {
         self.redraw();
         while self.running {
+            self.terminal_size = termion::terminal_size().expect("Could not get terminal size");
             if self.kbin() {
                 self.redraw();
             }
@@ -188,7 +193,7 @@ impl ListApp{
             write!(
                 self.stdout,
                 "{}[{}] {}",
-                termion::cursor::Goto(1, i as u16 + 1),
+                termion::cursor::Goto(self.terminal_size.0 / 2, i as u16 + 1),
                 "X".bright_red(),
                 line,
             )
