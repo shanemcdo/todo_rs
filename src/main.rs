@@ -48,6 +48,7 @@ impl ListType {
 #[derive(Copy, Clone, Debug)]
 enum InputDestination {
     NewItem,
+    NewItemAfter,
     EditItem,
 }
 
@@ -200,6 +201,10 @@ impl ListApp{
             InputMode::Insert(dest) => match dest {
                 InputDestination::NewItem => {
                     write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
+                        .expect("Could not print message");
+                },
+                InputDestination::NewItemAfter => {
+                    write!(self.stdout, "{} {}", "New item after current:".purple().bold(), self.input_string)
                         .expect("Could not print message");
                 },
                 InputDestination::EditItem => {
@@ -464,6 +469,7 @@ impl ListApp{
                             self.input_string = list[self.current_index as usize].clone();
                             self.input_string_index = self.input_string.len() - 1;
                         },
+                        'o' => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
                         'j' => self.move_down(),
@@ -475,50 +481,55 @@ impl ListApp{
                     _ => return false,
                 }
                 InputMode::Insert(dest) => match key {
-                        Key::Esc => {
-                            self.input_mode = InputMode::Normal;
-                            self.input_string = "".to_string();
-                            self.input_string_index = 0;
+                    Key::Esc => {
+                        self.input_mode = InputMode::Normal;
+                        self.input_string = "".to_string();
+                        self.input_string_index = 0;
+                    }
+                    Key::Backspace => {
+                        self.input_string.pop().unwrap_or('\0');
+                        if self.input_string_index >= 1 {
+                            self.input_string_index -= 1;
                         }
-                        Key::Backspace => {
-                            self.input_string.pop().unwrap_or('\0');
-                            if self.input_string_index >= 1 {
-                                self.input_string_index -= 1;
-                            }
-                        },
-                        Key::Left => {
-                            if self.input_string_index >= 1 {
-                                self.input_string_index -= 1;
-                            }
-                        },
-                        Key::Right => {
-                            let len = self.input_string.len();
-                            self.input_string_index += 1;
-                            if self.input_string_index >= len {
-                                self.input_string_index = len - 1;
-                            }
-                        },
-                        Key::Char('\n') => {
-                            self.input_mode = InputMode::Normal;
-                            self.input_string_index = 0;
-                            let mut s = "".to_string();
-                            std::mem::swap(&mut s, &mut self.input_string);
-                            match dest {
-                                InputDestination::NewItem => self.todo.push(s),
-                                InputDestination::EditItem => {
-                                    let list = match self.list_type {
-                                        ListType::Todo => &mut self.todo,
-                                        ListType::Done => &mut self.done,
-                                    };
-                                    list[self.current_index as usize] = s;
-                                },
-                            }
-                        },
-                        Key::Char(ch) => {
-                            self.input_string.insert(self.input_string_index, ch);
-                            self.input_string_index += 1;
+                    },
+                    Key::Left => {
+                        println!("AHHHH");
+                        if self.input_string_index >= 1 {
+                            self.input_string_index -= 1;
                         }
-                        _ => return false,
+                    },
+                    Key::Right => {
+                        let len = self.input_string.len();
+                        self.input_string_index += 1;
+                        if self.input_string_index >= len {
+                            self.input_string_index = len - 1;
+                        }
+                    },
+                    Key::Char('\n') => {
+                        self.input_mode = InputMode::Normal;
+                        self.input_string_index = 0;
+                        let mut s = "".to_string();
+                        std::mem::swap(&mut s, &mut self.input_string);
+                        match dest {
+                            InputDestination::NewItem => self.todo.push(s),
+                            InputDestination::NewItemAfter => {
+                                let idx = self.current_index as usize; // appease borrow checker
+                                self.todo.insert(idx, s);
+                            }
+                            InputDestination::EditItem => {
+                                let list = match self.list_type {
+                                    ListType::Todo => &mut self.todo,
+                                    ListType::Done => &mut self.done,
+                                };
+                                list[self.current_index as usize] = s;
+                            },
+                        }
+                    },
+                    Key::Char(ch) => {
+                        self.input_string.insert(self.input_string_index, ch);
+                        self.input_string_index += 1;
+                    }
+                    _ => return false,
                 }
             }
         } else {
