@@ -119,16 +119,19 @@ impl ListApp{
     fn redraw(&mut self){
         self.clear();
         match self.input_mode {
-            InputMode::Normal => match self.list_type {
-                ListType::Todo => self.draw_todo(),
-                ListType::Done => self.draw_done(),
+            InputMode::Normal => {
+                match self.list_type {
+                    ListType::Todo => self.draw_todo(),
+                    ListType::Done => self.draw_done(),
+                }
+                write!(self.stdout, "{}", termion::cursor::Goto(1, self.current_index + 1))
+                    .expect("Could not move cursor");
             }
             InputMode::Insert => {
-                println!("{} {}", "New item:".blue().bold(), self.input_string);
+                write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
+                    .expect("Could not print message");
             }
         }
-        write!(self.stdout, "{}", termion::cursor::Goto(1, self.current_index + 1))
-               .expect("Could not move cursor");
         self.stdout.flush().expect("Could not flush");
     }
 
