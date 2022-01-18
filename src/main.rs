@@ -88,7 +88,7 @@ impl ListApp{
 
     fn redraw(&mut self){
         self.clear();
-        self.draw_todo();
+        self.draw_done();
         self.stdout.flush().expect("Could not flush");
     }
 
@@ -110,6 +110,20 @@ impl ListApp{
                 self.stdout,
                 "{}[ ] {}",
                 termion::cursor::Goto(1, i as u16 + 1),
+                line,
+            )
+                .expect("Could not write line");
+        }
+    }
+
+    fn draw_done(&mut self){
+        let colorized = colorize_list(&self.done);
+        for (i, line) in colorized.into_iter().enumerate() {
+            write!(
+                self.stdout,
+                "{}[{}] {}",
+                termion::cursor::Goto(1, i as u16 + 1),
+                "X".bright_red(),
                 line,
             )
                 .expect("Could not write line");
