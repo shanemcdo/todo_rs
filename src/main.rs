@@ -51,6 +51,28 @@ enum InputMode {
     Insert,
 }
 
+fn word_wrap(s: String, max_length: usize) -> Vec<String> {
+    let mut res = vec![];
+    let mut s = s.trim().to_string();
+    'outer: loop {
+        let mut prev_word = 0;
+        for (i, ch) in s.chars().enumerate() {
+            if ch == ' ' {
+                prev_word = i;
+            } else if i + 1 >= max_length {
+                res.push(s[..prev_word].to_string());
+                s = s[prev_word..]
+                    .trim()
+                    .to_string();
+                continue 'outer;
+            }
+        }
+        res.push(s.clone());
+        break;
+    }
+    res
+}
+
 fn save_list(filename: &str, list: &Vec<String>) {
     let mut file = std::fs::File::create(filename).expect("Could not create file");
     for line in list {
