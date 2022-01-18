@@ -98,6 +98,7 @@ struct ListApp {
     current_index: u16,
     list_type: ListType,
     input_mode: InputMode,
+    input_string: String,
 }
 
 impl ListApp{
@@ -111,14 +112,20 @@ impl ListApp{
             current_index: 0,
             list_type: ListType::Todo,
             input_mode: InputMode::Normal,
+            input_string: "".to_string(),
         }
     }
 
     fn redraw(&mut self){
         self.clear();
-        match self.list_type {
-            ListType::Todo => self.draw_todo(),
-            ListType::Done => self.draw_done(),
+        match self.input_mode {
+            InputMode::Normal => match self.list_type {
+                ListType::Todo => self.draw_todo(),
+                ListType::Done => self.draw_done(),
+            }
+            InputMode::Insert => {
+                println!("{} {}", "New item:".blue().bold(), self.input_string);
+            }
         }
         write!(self.stdout, "{}", termion::cursor::Goto(1, self.current_index + 1))
                .expect("Could not move cursor");
@@ -299,7 +306,7 @@ impl ListApp{
                 InputMode::Normal => match (key, self.list_type) {
                     (Key::Char('q') | Key::Esc, _) => self.running = false,
                     (Key::Char('d') | Key::Char('x') | Key::Insert, ListType::Todo) => self.check_item(),
-                    (Key::Char('x') | Key::Insert, ListType::Done) => self.uncheck_item(),
+                    (Key::Char('x') | Key::Char('\n'), ListType::Done) => self.uncheck_item(),
                     (Key::Char('d') | Key::Backspace, ListType::Done) => self.delete_item(),
                     (Key::Char(ch), _) => match ch {
                         'a' | 'i' => self.input_mode = InputMode::Insert,
@@ -313,10 +320,18 @@ impl ListApp{
                     _ => return false,
                 }
                 InputMode::Insert => match key {
-                    Key::Esc => self.input_mode = InputMode::Normal,
-                    Key::Backspace => (),
-                    Key::Insert => (),
-                    Key::Char(ch) => (),
+                    Key::Esc => {
+                        self.input_mode = InputMode::Normal;
+                        self.input_string = "".to_string();
+                    }
+                    Key::Backspace => {self.input_string.pop().unwrap_or('\0');},
+                    Key::Char('\n') => {
+                        self.input_mode = InputMode::Normal;
+                        let mut s = "".to_string();
+                        std::mem::swap(&mut s, &mut self.input_string);
+                        self.todo.push(s);
+                    },
+                    Key::Char(ch) => self.input_string.push(ch),
                     _ => return false,
                 }
             }
