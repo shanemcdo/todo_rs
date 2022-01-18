@@ -9,6 +9,7 @@ use termion::{
     self,
     input::TermRead,
     raw::IntoRawMode,
+    event::Key,
 };
 
 const TODO_LIST: &str = std::env!("TODO_LIST");
@@ -28,6 +29,21 @@ const COLORS: [Color; COLORS_LEN] = [
     Color::TrueColor{r: 255, g: 0, b: 255},
     Color::TrueColor{r: 255, g: 0, b: 128}
 ];
+
+#[derive(Copy, Clone, Debug)]
+enum ListType {
+    Todo,
+    Done,
+}
+
+impl ListType {
+    fn next(&mut self) -> Self {
+        match self {
+            ListType::Todo => ListType::Done,
+            ListType::Done => ListType::Todo,
+        }
+    }
+}
 
 fn save_list(filename: &str, list: &Vec<String>) {
     let mut file = std::fs::File::create(filename).expect("Could not create file");
@@ -73,6 +89,8 @@ struct ListApp {
     stdout: termion::raw::RawTerminal<io::Stdout>,
     todo: Vec<String>,
     done: Vec<String>,
+    current_index: u16,
+    list_type: ListType
 }
 
 impl ListApp{
@@ -83,12 +101,19 @@ impl ListApp{
             stdout: io::stdout().into_raw_mode().unwrap(),
             todo: load_list(TODO_LIST),
             done: load_list(DONE_LIST),
+            current_index: 0,
+            list_type: ListType::Todo,
         }
     }
 
     fn redraw(&mut self){
         self.clear();
-        self.draw_done();
+        match self.list_type {
+            ListType::Todo => self.draw_todo(),
+            ListType::Done => self.draw_done(),
+        }
+        write!(self.stdout, "{}", termion::cursor::Goto(1, self.current_index + 1))
+               .expect("Could not move cursor");
         self.stdout.flush().expect("Could not flush");
     }
 
@@ -101,6 +126,7 @@ impl ListApp{
         }
         save_list(TODO_LIST, &self.todo);
         save_list(DONE_LIST, &self.done);
+        self.clear();
     }
 
     fn draw_todo(&mut self){
@@ -140,15 +166,98 @@ impl ListApp{
             .expect("Could not clear screen");
     }
 
+    fn move_up(&mut self){
+        let len = self.get_curr_list_len();
+        if len == 0 {
+            return
+        }
+        if self.current_index == 0 {
+            self.current_index = len;
+        }
+        self.current_index -= 1;
+    }
+
+    fn move_down(&mut self){
+        let len = self.get_curr_list_len();
+        if len == 0 {
+            return
+        }
+        self.current_index += 1;
+        self.current_index %= len;
+    }
+
+    fn get_curr_list_len(&self) -> u16{
+        match self.list_type {
+            ListType::Todo => self.todo.len() as u16,
+            ListType::Done => self.done.len() as u16,
+        }
+    }
+
+    fn swap_list(&mut self){
+        self.list_type = self.list_type.next();
+        let len = self.get_curr_list_len();
+        if len == 0 {
+            self.current_index = 0;
+            return
+        }
+        self.current_index %= len;
+    }
+    
+    fn check_item(&mut self){
+        let mut len = self.todo.len() as u16;
+        if len == 0 {
+            return
+        }
+        self.done.push(self.todo.remove(self.current_index as usize));
+        len -= 1;
+        if len == 0 {
+            self.current_index = 0;
+            return
+        }
+        if self.current_index >= len {
+            self.current_index = len - 1;
+        }
+    }
+
+    fn uncheck_item(&mut self){
+        let mut len = self.done.len() as u16;
+        if len == 0 {
+            return
+        }
+        self.todo.push(self.done.remove(self.current_index as usize));
+        len -= 1;
+        if len == 0 {
+            self.current_index = 0;
+            return
+        }
+        if self.current_index >= len {
+            self.current_index = len - 1;
+        }
+    }
+
+    fn delete_item(&mut self){
+        let _ = self.done.remove(self.current_index as usize);
+        let len = self.done.len() as u16;
+        if len == 0 {
+            self.current_index = 0;
+            return
+        }
+        if self.current_index >= len {
+            self.current_index = len - 1;
+        }
+    }
+
     fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
-            match key {
-                termion::event::Key::Char(ch) => match ch {
-                    'q' => self.running = false,
-                    'h' => (),
-                    'j' => (),
-                    'k' => (),
-                    'l' => (),
+            match (key, self.list_type) {
+                (Key::Char('q') | Key::Esc, _) => self.running = false,
+                (Key::Char('d') | Key::Char('x') | Key::Insert, ListType::Todo) => self.check_item(),
+                (Key::Char('x') | Key::Insert, ListType::Done) => self.uncheck_item(),
+                (Key::Char('d') | Key::Delete, ListType::Done) => self.delete_item(),
+                (Key::Char(ch), list_type) => match (ch, list_type) {
+                    ('h' | 'l', _) => self.swap_list(),
+                    ('j', _) => self.move_down(),
+                    ('k', _) => self.move_up(),
                     _ => return false,
                 }
                 _ => return false,
