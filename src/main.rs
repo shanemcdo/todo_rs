@@ -142,6 +142,7 @@ struct ListApp {
     list_type: ListType,
     input_mode: InputMode,
     input_string: String,
+    input_string_index: usize,
     terminal_size: (u16, u16),
 }
 
@@ -157,6 +158,7 @@ impl ListApp{
             list_type: ListType::Todo,
             input_mode: InputMode::Normal,
             input_string: "".to_string(),
+            input_string_index: 0,
             terminal_size: termion::terminal_size().expect("Could not get terminal size"),
         }
     }
@@ -460,6 +462,7 @@ impl ListApp{
                                 ListType::Done => &self.done,
                             };
                             self.input_string = list[self.current_index as usize].clone();
+                            self.input_string_index = self.input_string.len() - 1;
                         },
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
@@ -475,10 +478,29 @@ impl ListApp{
                         Key::Esc => {
                             self.input_mode = InputMode::Normal;
                             self.input_string = "".to_string();
+                            self.input_string_index = 0;
                         }
-                        Key::Backspace => {self.input_string.pop().unwrap_or('\0');},
+                        Key::Backspace => {
+                            self.input_string.pop().unwrap_or('\0');
+                            if self.input_string_index >= 1 {
+                                self.input_string_index -= 1;
+                            }
+                        },
+                        Key::Left => {
+                            if self.input_string_index >= 1 {
+                                self.input_string_index -= 1;
+                            }
+                        },
+                        Key::Right => {
+                            let len = self.input_string.len();
+                            self.input_string_index += 1;
+                            if self.input_string_index >= len {
+                                self.input_string_index = len - 1;
+                            }
+                        },
                         Key::Char('\n') => {
                             self.input_mode = InputMode::Normal;
+                            self.input_string_index = 0;
                             let mut s = "".to_string();
                             std::mem::swap(&mut s, &mut self.input_string);
                             match dest {
@@ -492,7 +514,10 @@ impl ListApp{
                                 },
                             }
                         },
-                        Key::Char(ch) => self.input_string.push(ch),
+                        Key::Char(ch) => {
+                            self.input_string.insert(self.input_string_index, ch);
+                            self.input_string_index += 1;
+                        }
                         _ => return false,
                 }
             }
