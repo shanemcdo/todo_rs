@@ -65,9 +65,13 @@ fn word_wrap(s: String, max_length: usize) -> Vec<String> {
     'outer: loop {
         let mut prev_word = 0;
         for (i, ch) in s.chars().enumerate() {
-            if ch == ' ' {
+            if ch == ' ' || ch == '-' || ch == ',' || ch == ':' || ch == ',' || ch == ';' || ch == '.'{
                 prev_word = i;
-            } else if i + 1 >= max_length {
+            }
+            else if i + 1 >= max_length {
+                if prev_word == 0 {
+                    prev_word = i; // if one word is too long u can wrap it
+                }
                 res.push(s[..prev_word].to_string());
                 s = s[prev_word..]
                     .trim()
