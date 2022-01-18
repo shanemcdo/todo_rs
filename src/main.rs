@@ -175,15 +175,39 @@ impl ListApp{
     }
 
     fn draw_todo(&mut self){
-        let colorized = colorize_list(&self.todo);
-        for (i, line) in colorized.into_iter().enumerate() {
-            write!(
-                self.stdout,
-                "{}[ ] {}",
-                termion::cursor::Goto(1, i as u16 + 1),
-                line,
-            )
-                .expect("Could not write line");
+        let max = self.terminal_size.0 / 2 - 4;
+        let mut idx = 0u16;
+        for line in &self.todo {
+            if line.len() < max as usize {
+                write!(
+                    self.stdout,
+                    "{}[ ] {}",
+                    termion::cursor::Goto(1, idx + 1),
+                    line.color(colorize(idx as usize)),
+                ).expect("Could not write line");
+                idx += 1;
+            } else {
+                let mut first = true;
+                for subline in word_wrap(line.clone(), max as usize) {
+                    if first {
+                        first = false;
+                        write!(
+                            self.stdout,
+                            "{}[ ] {}",
+                            termion::cursor::Goto(1, idx + 1),
+                            subline.color(colorize(idx as usize)),
+                        ).expect("Could not write line");
+                    } else {
+                        write!(
+                            self.stdout,
+                            "{}    {}",
+                            termion::cursor::Goto(1, idx + 1),
+                            subline.color(colorize(idx as usize)),
+                        ).expect("Could not write line");
+                    }
+                    idx += 1;
+                }
+            }
         }
     }
 
