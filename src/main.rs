@@ -65,18 +65,19 @@ fn word_wrap(s: String, max_length: usize) -> Vec<String> {
     'outer: loop {
         let mut prev_word = 0;
         for (i, ch) in s.chars().enumerate() {
-            if ch == ' ' || ch == '-' || ch == ',' || ch == ':' || ch == ',' || ch == ';' || ch == '.'{
-                prev_word = i;
+            match ch {
+                'a'..='z' | 'A'..='Z' => (), // if its a letter
+                _ => prev_word = i, // its a sperator
             }
-            else if i + 1 >= max_length {
+            if i + 1 >= max_length {
                 if prev_word == 0 {
                     prev_word = i; // if one word is too long u can wrap it
                 }
-                res.push(s[..prev_word].to_string());
-                s = s[prev_word..]
+                res.push(s[..prev_word].to_string()); // append to result
+                s = s[prev_word..] // remove part pushed to result
                     .trim()
                     .to_string();
-                continue 'outer;
+                continue 'outer; // exit outer loop
             }
         }
         res.push(s.clone());
