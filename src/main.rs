@@ -199,23 +199,20 @@ impl ListApp{
                 self.draw_done();
                 self.go_to_current_index();
             }
-            InputMode::Insert(dest) => match dest {
-                InputDestination::NewItem => {
-                    write!(self.stdout, "{} {}", "New item:".blue().bold(), self.input_string)
-                        .expect("Could not print message");
-                },
-                InputDestination::NewItemBefore => {
-                    write!(self.stdout, "{} {}", "New item before current:".magenta().bold(), self.input_string)
-                        .expect("Could not print message");
-                },
-                InputDestination::NewItemAfter => {
-                    write!(self.stdout, "{} {}", "New item after current:".purple().bold(), self.input_string)
-                        .expect("Could not print message");
-                },
-                InputDestination::EditItem => {
-                    write!(self.stdout, "{} {}", "Edit item:".green().bold(), self.input_string)
-                        .expect("Could not print message");
-                },
+            InputMode::Insert(dest) => {
+                let leader = match dest {
+                    InputDestination::NewItem => "New item: ".blue().bold(),
+                    InputDestination::NewItemBefore => "New item before current: ".magenta().bold(),
+                    InputDestination::NewItemAfter => "New item after current: ".purple().bold(),
+                    InputDestination::EditItem => "Edit item: ".green().bold(),
+                };
+                write!(
+                    self.stdout,
+                    "{}{}{}",
+                    leader,
+                    self.input_string,
+                    termion::cursor::Goto(leader.len() as u16 + self.input_string_index as u16 + 1, 1),
+                ).expect("Could not print message");
             }
         }
         self.stdout.flush().expect("Could not flush");
@@ -307,8 +304,9 @@ impl ListApp{
                         first = false;
                         write!(
                             self.stdout,
-                            "{}[ ] {}",
+                            "{}[{}] {}",
                             termion::cursor::Goto(x, idx + 2),
+                            "X".red().bold(),
                             subline.color(colorize(idx as usize)),
                         ).expect("Could not write line");
                     } else {
@@ -472,7 +470,7 @@ impl ListApp{
                                 ListType::Done => &self.done,
                             };
                             self.input_string = list[self.current_index as usize].clone();
-                            self.input_string_index = self.input_string.len() - 1;
+                            self.input_string_index = self.input_string.len();
                         },
                         'O' => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
                         'o' => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
@@ -488,27 +486,34 @@ impl ListApp{
                 }
                 InputMode::Insert(dest) => match key {
                     Key::Esc => {
+                        if let (Some(Ok(Key::Char(brack))), Some(Ok(Key::Char(letter)))) = (self.stdin.next(), self.stdin.next()) {
+                            match (brack, letter) {
+                                ('[', 'D') => { // left
+                                    if self.input_string_index >= 1 {
+                                        self.input_string_index -= 1;
+                                    }
+                                },
+                                ('[', 'C') => { // right
+                                    let len = self.input_string.len();
+                                    self.input_string_index += 1;
+                                    if self.input_string_index > len {
+                                        self.input_string_index = len;
+                                    }
+                                },
+                                ('[', _) => (),
+                                _ => panic!("Unexpected key sequence"),
+                            }
+                            return true;
+                        }
                         self.input_mode = InputMode::Normal;
                         self.input_string = "".to_string();
                         self.input_string_index = 0;
                     }
                     Key::Backspace => {
-                        self.input_string.pop().unwrap_or('\0');
                         if self.input_string_index >= 1 {
                             self.input_string_index -= 1;
                         }
-                    },
-                    Key::Left => {
-                        if self.input_string_index >= 1 {
-                            self.input_string_index -= 1;
-                        }
-                    },
-                    Key::Right => {
-                        let len = self.input_string.len();
-                        self.input_string_index += 1;
-                        if self.input_string_index >= len {
-                            self.input_string_index = len - 1;
-                        }
+                        self.input_string.remove(self.input_string_index);
                     },
                     Key::Char('\n') => {
                         self.input_mode = InputMode::Normal;
