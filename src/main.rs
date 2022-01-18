@@ -138,6 +138,7 @@ impl ListApp{
     }
 
     fn go_to_current_index(&mut self){
+        let max = self.get_max_word_wrap_length();
         let list = match self.list_type {
             ListType::Todo => &mut self.todo,
             ListType::Done => &mut self.done,
@@ -145,10 +146,8 @@ impl ListApp{
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line plus 1
         let mut pos = 1;
-        let max = self.get_max_word_wrap_length()
         for i in 0..self.current_index {
             pos += word_wrap(list[i as usize].clone(), max).len();
-            println!("\n{}", pos);
         }
         let x = match self.list_type {
             ListType::Todo => 1,
