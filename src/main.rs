@@ -29,7 +29,7 @@ const COLORS: [Color; COLORS_LEN] = [
     Color::TrueColor{r: 255, g: 0, b: 128}
 ];
 
-fn save_list(filename: &str, list: Vec<String>) {
+fn save_list(filename: &str, list: &Vec<String>) {
     let mut file = std::fs::File::create(filename).expect("Could not create file");
     for line in list {
         write!(file, "{}\n", line).expect("Could not write to file");
@@ -51,7 +51,7 @@ fn colorize(index: usize) -> Color {
     COLORS[index % COLORS_LEN].clone()
 }
 
-fn colorize_list(list: Vec<String>) -> Vec<ColoredString> {
+fn colorize_list(list: &Vec<String>) -> Vec<ColoredString> {
     list.into_iter()
         .enumerate()
         .map(|(index, string)| string.color(colorize(index)))
@@ -70,7 +70,9 @@ struct Args {
 struct ListApp {
     running: bool,
     stdin: termion::input::Keys<termion::AsyncReader>,
-    stdout: termion::raw::RawTerminal<io::Stdout>
+    stdout: termion::raw::RawTerminal<io::Stdout>,
+    todo: Vec<String>,
+    done: Vec<String>,
 }
 
 impl ListApp{
@@ -79,16 +81,52 @@ impl ListApp{
             running: true,
             stdin: termion::async_stdin().keys(),
             stdout: io::stdout().into_raw_mode().unwrap(),
+            todo: load_list(TODO_LIST),
+            done: load_list(DONE_LIST),
         }
+    }
+
+    fn redraw(&mut self){
+        self.clear();
+        self.draw_todo();
+        self.stdout.flush().expect("Could not flush");
     }
 
     fn run(&mut self) {
+        self.redraw();
         while self.running {
-            self.kbin();
+            if self.kbin() {
+                self.redraw();
+            }
+        }
+        save_list(TODO_LIST, &self.todo);
+        save_list(DONE_LIST, &self.done);
+    }
+
+    fn draw_todo(&mut self){
+        let colorized = colorize_list(&self.todo);
+        for (i, line) in colorized.into_iter().enumerate() {
+            write!(
+                self.stdout,
+                "{}[ ] {}",
+                termion::cursor::Goto(1, i as u16 + 1),
+                line,
+            )
+                .expect("Could not write line");
         }
     }
 
-    fn kbin(&mut self) {
+    fn clear(&mut self) {
+        write!(
+            self.stdout,
+            "{}{}",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1),
+        )
+            .expect("Could not clear screen");
+    }
+
+    fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
             match key {
                 termion::event::Key::Char(ch) => match ch {
@@ -97,11 +135,14 @@ impl ListApp{
                     'j' => (),
                     'k' => (),
                     'l' => (),
-                    _ => (),
+                    _ => return false,
                 }
-                _ => (),
+                _ => return false,
             }
+        } else {
+            return false;
         }
+        true
     }
 }
 
@@ -110,7 +151,7 @@ fn main() {
     if args.add != "" {
         let mut list = load_list(TODO_LIST);
         list.push(args.add);
-        save_list(TODO_LIST, list);
+        save_list(TODO_LIST, &list);
     }
     ListApp::new().run();
 }
