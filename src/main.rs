@@ -144,7 +144,6 @@ impl ListApp{
         for i in 0..self.current_index {
             pos += word_wrap(list[i as usize].clone(), self.terminal_size.0 as usize / 2).len();
         }
-        println!("{}", pos);
         let x = match self.list_type {
             ListType::Todo => 1,
             ListType::Done => self.terminal_size.0 / 2,
