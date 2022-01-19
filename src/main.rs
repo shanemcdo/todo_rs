@@ -79,7 +79,7 @@ fn word_wrap(s: String, max_length: usize) -> Vec<String> {
                 s = s[prev_word..] // remove part pushed to result
                     .trim()
                     .to_string();
-                continue 'outer; // exit outer loop
+                continue 'outer; // continue outer loop
             }
         }
         res.push(s.clone());
