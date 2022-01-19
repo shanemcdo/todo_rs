@@ -29,7 +29,8 @@ const COLORS: [Color; COLORS_LEN] = [
     Color::TrueColor{r: 255, g: 0, b: 255},
     Color::TrueColor{r: 255, g: 0, b: 128}
 ];
-const MAX_WIDTH_SINGLE_PANE: u16 = 40;
+const MAX_WIDTH_SINGLE_PANE: u16 = 55;
+const CHECKBOX_WIDTH: usize = 4;
 
 #[derive(Copy, Clone, Debug)]
 enum ListType {
@@ -178,9 +179,9 @@ impl ListApp{
 
     fn get_max_word_wrap_length(&self) -> usize{
         if self.one_pane {
-            self.terminal_size.0 as usize - 4
+            self.terminal_size.0 as usize - CHECKBOX_WIDTH
         } else {
-            self.terminal_size.0 as usize / 2 - 4
+            self.terminal_size.0 as usize / 2 - CHECKBOX_WIDTH
          }
     }
 
