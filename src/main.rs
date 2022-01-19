@@ -29,6 +29,7 @@ const COLORS: [Color; COLORS_LEN] = [
     Color::TrueColor{r: 255, g: 0, b: 255},
     Color::TrueColor{r: 255, g: 0, b: 128}
 ];
+const MAX_WIDTH_SINGLE_PANE: u16 = 40;
 
 #[derive(Copy, Clone, Debug)]
 enum ListType {
@@ -153,10 +154,12 @@ struct ListApp {
     input_string: String,
     input_string_index: usize,
     terminal_size: (u16, u16),
+    one_pane: bool,
 }
 
 impl ListApp{
     fn new() -> Self{
+        let terminal_size = termion::terminal_size().expect("Could not get terminal size"); 
         Self {
             running: true,
             stdin: termion::async_stdin().keys(),
@@ -168,12 +171,17 @@ impl ListApp{
             input_mode: InputMode::Normal,
             input_string: "".to_string(),
             input_string_index: 0,
-            terminal_size: termion::terminal_size().expect("Could not get terminal size"),
+            terminal_size,
+            one_pane: terminal_size.0 <= MAX_WIDTH_SINGLE_PANE,
         }
     }
 
     fn get_max_word_wrap_length(&self) -> usize{
-        self.terminal_size.0 as usize / 2 - 4
+        if self.one_pane {
+            self.terminal_size.0 as usize - 4
+        } else {
+            self.terminal_size.0 as usize / 2 - 4
+         }
     }
 
     fn go_to_current_index(&mut self){
@@ -190,8 +198,8 @@ impl ListApp{
             pos += word_wrap(list[i as usize].clone(), max).len();
         }
         let x = match self.list_type {
-            ListType::Todo => 1,
-            ListType::Done => self.terminal_size.0 / 2,
+            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
+            _ => 1, // if self.one_pane or ListType::Todo
         };
         write!(self.stdout, "{}", termion::cursor::Goto(x, pos as u16))
             .expect("Could not move cursor");
@@ -201,8 +209,15 @@ impl ListApp{
         self.clear();
         match self.input_mode {
             InputMode::Normal => {
-                self.draw_todo();
-                self.draw_done();
+                if self.one_pane {
+                    match self.list_type {
+                        ListType::Todo => self.draw_todo(),
+                        ListType::Done => self.draw_done(),
+                    }
+                } else {
+                    self.draw_todo();
+                    self.draw_done();
+                }
                 self.go_to_current_index();
             }
             InputMode::Insert(dest) => {
@@ -228,6 +243,7 @@ impl ListApp{
         self.redraw();
         while self.running {
             self.terminal_size = termion::terminal_size().expect("Could not get terminal size");
+            self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
             if self.kbin() {
                 self.redraw();
             }
@@ -281,7 +297,11 @@ impl ListApp{
     }
 
     fn draw_done(&mut self){
-        let x = self.terminal_size.0 / 2;
+        let x = if self.one_pane {
+            1
+        } else {
+            self.terminal_size.0 / 2
+        };
         write!(
             self.stdout,
             "{}[{}]",
