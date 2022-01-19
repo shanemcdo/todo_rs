@@ -199,7 +199,6 @@ impl ListApp{
         self.clear();
         match self.input_mode {
             InputMode::Normal => {
-                self.draw_title();
                 self.draw_todo();
                 self.draw_done();
                 self.go_to_current_index();
@@ -236,22 +235,13 @@ impl ListApp{
         self.clear();
     }
 
-    fn draw_title(&mut self){
+    fn draw_todo(&mut self){
         write!(
             self.stdout,
             "{}[{}]",
             termion::cursor::Goto(1, 1),
             "Todo".green().bold(),
         ).expect("Could not write to stdout");
-        write!(
-            self.stdout,
-            "{}[{}]",
-            termion::cursor::Goto(self.terminal_size.0 / 2, 1),
-            "Completed".red().bold(),
-        ).expect("Could not write to stdout");
-    }
-
-    fn draw_todo(&mut self){
         let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
         for line in &self.todo {
@@ -290,6 +280,12 @@ impl ListApp{
 
     fn draw_done(&mut self){
         let x = self.terminal_size.0 / 2;
+        write!(
+            self.stdout,
+            "{}[{}]",
+            termion::cursor::Goto(x, 1),
+            "Completed".red().bold(),
+        ).expect("Could not write to stdout");
         let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
         for line in &self.done {
