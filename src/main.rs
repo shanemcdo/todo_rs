@@ -123,6 +123,8 @@ fn colorize(index: usize) -> Color {
             d            ->  Delete item from completed
             a, i         ->  Enter insert mode
             h, l         ->  Move from todo to completed
+            g            ->  Move to top of list
+            G            ->  Move to bottom of list
             j            ->  Move down on a list
             k            ->  Move up on a list
             J            ->  Drag an element down on a list
@@ -354,6 +356,14 @@ impl ListApp{
         self.current_index %= len;
     }
 
+    fn move_to_top(&mut self){
+        self.current_index = 0;
+    }
+
+    fn move_to_bottom(&mut self){
+        self.current_index = self.get_curr_list_len() - 1;
+    }
+
     fn get_curr_list_len(&self) -> u16{
         match self.list_type {
             ListType::Todo => self.todo.len() as u16,
@@ -481,6 +491,8 @@ impl ListApp{
                         'J' => self.shift_down(),
                         'k' => self.move_up(),
                         'K' => self.shift_up(),
+                        'g' => self.move_to_top(),
+                        'G' => self.move_to_bottom(),
                         _ => return false,
                     }
                     _ => return false,
