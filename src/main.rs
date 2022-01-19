@@ -246,9 +246,9 @@ impl ListApp{
             let size = termion::terminal_size().expect("Could not get terminal size");
             if self.terminal_size != size {
                 self.terminal_size = size;
+                self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
                 self.redraw();
             }
-            self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
             if self.kbin() {
                 self.redraw();
             }
