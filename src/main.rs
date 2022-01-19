@@ -463,6 +463,8 @@ impl ListApp{
                     (Key::Char('d') | Key::Char('x') | Key::Char('\n'), ListType::Todo) => self.check_item(),
                     (Key::Char('x') | Key::Char('\n'), ListType::Done) => self.uncheck_item(),
                     (Key::Char('d') | Key::Backspace, ListType::Done) => self.delete_item(),
+                    (Key::Char('O'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
+                    (Key::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                     (Key::Char(ch), _) => match ch {
                         'e' => {
                             self.input_mode = InputMode::Insert(InputDestination::EditItem);
@@ -473,8 +475,6 @@ impl ListApp{
                             self.input_string = list[self.current_index as usize].clone();
                             self.input_string_index = self.input_string.len();
                         },
-                        'O' => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
-                        'o' => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
                         'j' => self.move_down(),
