@@ -263,9 +263,9 @@ impl ListApp{
     }
 
     fn draw_list(&mut self, list_type: ListType){
+        let list = get_list!(self, list_type);
         let x = self.get_x_pos(list_type);
         let title = self.get_title(list_type);
-        let list = get_list!(self, list_type);
         let checkbox = self.get_checkbox(list_type);
         assert!(title.len() == CHECKBOX_WIDTH, "Length of checkbox must be CHECKBOX_WIDTH");
         write!( // go to beginning and print title
