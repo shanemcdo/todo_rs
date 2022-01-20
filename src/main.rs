@@ -202,6 +202,9 @@ impl ListApp{
             ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
             _ => 1, // if self.one_pane or ListType::Todo
         };
+        if pos as u16 > self.terminal_size.1 { // offscreen
+            pos = self.terminal_size.1 as usize;
+        }
         write!(self.stdout, "{}", termion::cursor::Goto(x, pos as u16))
             .expect("Could not move cursor");
     }
@@ -258,97 +261,72 @@ impl ListApp{
         self.clear();
     }
 
-    fn draw_todo(&mut self){
-        write!(
+    fn draw_list(&mut self, list_type: ListType){
+        let x = match list_type {
+            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
+            _ => 1, // if self.one_pane or ListType::Todo
+        };
+        let title = match list_type {
+            ListType::Todo => "Todo".green().bold(),
+            ListType::Done => "DOne".red().bold(),
+        };
+        let list = match list_type {
+            ListType::Todo => &self.todo,
+            ListType::Done => &self.done,
+        };
+        let prefix = match list_type {
+            ListType::Todo => "[ ] ".to_string(),
+            ListType::Done => format!("[{}] ", "X".red().bold()),
+        };
+        write!( // go to beginning and print title
             self.stdout,
             "{}[{}]",
-            termion::cursor::Goto(1, 1),
-            "Todo".green().bold(),
+            termion::cursor::Goto(x, 1),
+            title,
         ).expect("Could not write to stdout");
         let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
-        for line in &self.todo {
+        for line in list {
+            if idx + 2 > self.terminal_size.1 { // offscreen
+                break;
+            }
             if line.len() < max as usize {
                 write!(
                     self.stdout,
-                    "{}[ ] {}",
-                    termion::cursor::Goto(1, idx + 2),
+                    "{}{}{}",
+                    termion::cursor::Goto(x, idx + 2),
+                    prefix,
                     line.color(colorize(idx as usize)),
                 ).expect("Could not write line");
                 idx += 1;
             } else {
                 let mut first = true;
                 for subline in word_wrap(line.clone(), max as usize) {
-                    if first {
+                    let prefix = if first {
                         first = false;
-                        write!(
-                            self.stdout,
-                            "{}[ ] {}",
-                            termion::cursor::Goto(1, idx + 2),
-                            subline.color(colorize(idx as usize)),
-                        ).expect("Could not write line");
+                        &prefix
                     } else {
-                        write!(
-                            self.stdout,
-                            "{}    {}",
-                            termion::cursor::Goto(1, idx + 2),
-                            subline.color(colorize(idx as usize)),
-                        ).expect("Could not write line");
-                    }
+                        "    "
+                    };
+                    write!(
+                        self.stdout,
+                        "{}{}{}",
+                        termion::cursor::Goto(x, idx + 2),
+                        prefix,
+                        subline.color(colorize(idx as usize)),
+                    ).expect("Could not write line");
                     idx += 1;
                 }
             }
         }
     }
 
+    fn draw_todo(&mut self){
+        self.draw_list(ListType::Todo);
+    }
+
     fn draw_done(&mut self){
-        let x = if self.one_pane {
-            1
-        } else {
-            self.terminal_size.0 / 2
-        };
-        write!(
-            self.stdout,
-            "{}[{}]",
-            termion::cursor::Goto(x, 1),
-            "Completed".red().bold(),
-        ).expect("Could not write to stdout");
-        let max = self.get_max_word_wrap_length();
-        let mut idx = 0u16;
-        for line in &self.done {
-            if line.len() < max as usize {
-                write!(
-                    self.stdout,
-                    "{}[{}] {}",
-                    termion::cursor::Goto(x, idx + 2),
-                    "X".red().bold(),
-                    line.color(colorize(idx as usize)),
-                ).expect("Could not write line");
-                idx += 1;
-            } else {
-                let mut first = true;
-                for subline in word_wrap(line.clone(), max as usize) {
-                    if first {
-                        first = false;
-                        write!(
-                            self.stdout,
-                            "{}[{}] {}",
-                            termion::cursor::Goto(x, idx + 2),
-                            "X".red().bold(),
-                            subline.color(colorize(idx as usize)),
-                        ).expect("Could not write line");
-                    } else {
-                        write!(
-                            self.stdout,
-                            "{}    {}",
-                            termion::cursor::Goto(x, idx + 2),
-                            subline.color(colorize(idx as usize)),
-                        ).expect("Could not write line");
-                    }
-                    idx += 1;
-                }
-            }
-        }
+        self.draw_list(ListType::Done);
     }
 
     fn clear(&mut self) {
