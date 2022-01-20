@@ -195,6 +195,7 @@ impl ListApp{
     fn go_to_current_index(&mut self){
         let max = self.get_max_word_wrap_length();
         let list = get_list!(self, self.list_type);
+        let offset = self.get_y_offset(self.list_type);
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line plus 1
         // plus 1 again for the title offset
@@ -203,10 +204,8 @@ impl ListApp{
             pos += word_wrap(&list[i as usize], max).len();
         }
         let x = self.get_x_pos(self.list_type);
-        if pos as u16 > self.terminal_size.1 { // offscreen
-            pos = self.terminal_size.1 as usize;
-        }
-        write!(self.stdout, "{}", termion::cursor::Goto(x, pos as u16))
+        let pos = (pos as u16).checked_sub(offset).unwrap_or(2);
+        write!(self.stdout, "{}", termion::cursor::Goto(x, pos))
             .expect("Could not move cursor");
     }
 
