@@ -68,7 +68,7 @@ fn word_wrap(s: String, max_length: usize) -> Vec<String> {
         let mut prev_word = 0;
         for (i, ch) in s.chars().enumerate() {
             match ch {
-                'a'..='z' | 'A'..='Z' => (), // if its a letter
+                'a'..='z' | 'A'..='Z' | '0'..='9' => (), // if its a letter
                 _ => prev_word = i, // its a sperator
             }
             if i + 1 >= max_length {
@@ -79,7 +79,7 @@ fn word_wrap(s: String, max_length: usize) -> Vec<String> {
                 s = s[prev_word..] // remove part pushed to result
                     .trim()
                     .to_string();
-                continue 'outer; // continue outer loop
+                continue 'outer;
             }
         }
         res.push(s.clone());
@@ -290,33 +290,22 @@ impl ListApp{
             if idx + 2 > self.terminal_size.1 { // offscreen
                 break;
             }
-            if line.len() < max as usize {
+            let mut first = true;
+            for subline in word_wrap(line.clone(), max as usize) {
+                let prefix = if first {
+                    first = false;
+                    &prefix
+                } else {
+                    "    "
+                };
                 write!(
                     self.stdout,
                     "{}{}{}",
                     termion::cursor::Goto(x, idx + 2),
                     prefix,
-                    line.color(colorize(idx as usize)),
+                    subline.color(colorize(idx as usize)),
                 ).expect("Could not write line");
                 idx += 1;
-            } else {
-                let mut first = true;
-                for subline in word_wrap(line.clone(), max as usize) {
-                    let prefix = if first {
-                        first = false;
-                        &prefix
-                    } else {
-                        "    "
-                    };
-                    write!(
-                        self.stdout,
-                        "{}{}{}",
-                        termion::cursor::Goto(x, idx + 2),
-                        prefix,
-                        subline.color(colorize(idx as usize)),
-                    ).expect("Could not write line");
-                    idx += 1;
-                }
             }
         }
     }
