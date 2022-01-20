@@ -32,6 +32,22 @@ const COLORS: [Color; COLORS_LEN] = [
 const MAX_WIDTH_SINGLE_PANE: u16 = 55;
 const CHECKBOX_WIDTH: usize = 4;
 
+macro_rules! get_list {
+    ($app: expr, $list_type: expr) => (
+        match $list_type {
+            ListType::Todo => &$app.todo,
+            ListType::Done => &$app.done,
+        }
+    );
+
+    ($app: expr, mut $list_type: expr) => (
+        match $list_type {
+            ListType::Todo => &mut $app.todo,
+            ListType::Done => &mut $app.done,
+        }
+    );
+}
+
 #[derive(Copy, Clone, Debug)]
 enum ListType {
     Todo,
@@ -186,10 +202,7 @@ impl ListApp{
 
     fn go_to_current_index(&mut self){
         let max = self.get_max_word_wrap_length();
-        let list = match self.list_type {
-            ListType::Todo => &mut self.todo,
-            ListType::Done => &mut self.done,
-        };
+        let list = get_list!(self, self.list_type);
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line plus 1
         // plus 1 again for the title offset
@@ -197,10 +210,7 @@ impl ListApp{
         for i in 0..self.current_index {
             pos += word_wrap(list[i as usize].clone(), max).len();
         }
-        let x = match self.list_type {
-            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
-            _ => 1, // if self.one_pane or ListType::Todo
-        };
+        let x = self.get_x_pos(self.list_type);
         if pos as u16 > self.terminal_size.1 { // offscreen
             pos = self.terminal_size.1 as usize;
         }
@@ -261,18 +271,12 @@ impl ListApp{
     }
 
     fn draw_list(&mut self, list_type: ListType){
-        let x = match list_type {
-            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
-            _ => 1, // if self.one_pane or ListType::Todo
-        };
+        let x = self.get_x_pos(list_type);
         let title = match list_type {
             ListType::Todo => "Todo".green().bold(),
-            ListType::Done => "DOne".red().bold(),
+            ListType::Done => "Done".red().bold(),
         };
-        let list = match list_type {
-            ListType::Todo => &self.todo,
-            ListType::Done => &self.done,
-        };
+        let list = get_list!(self, list_type);
         let prefix = match list_type {
             ListType::Todo => "[ ] ".to_string(),
             ListType::Done => format!("[{}] ", "X".red().bold()),
@@ -353,6 +357,13 @@ impl ListApp{
 
     fn move_to_bottom(&mut self){
         self.current_index = self.get_curr_list_len() - 1;
+    }
+
+    fn get_x_pos(&self, list_type: ListType) -> u16 {
+        match list_type {
+            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
+            _ => 1, // if self.one_pane or ListType::Todo
+        }
     }
 
     fn get_curr_list_len(&self) -> u16{
@@ -469,10 +480,7 @@ impl ListApp{
                     (Key::Char(ch), _) => match ch {
                         'e' => {
                             self.input_mode = InputMode::Insert(InputDestination::EditItem);
-                            let list = match self.list_type {
-                                ListType::Todo => &self.todo,
-                                ListType::Done => &self.done,
-                            };
+                            let list = get_list!(self, self.list_type);
                             self.input_string = list[self.current_index as usize].clone();
                             self.input_string_index = self.input_string.len();
                         },
@@ -535,10 +543,7 @@ impl ListApp{
                                 self.todo.insert(idx, s);
                             }
                             InputDestination::EditItem => {
-                                let list = match self.list_type {
-                                    ListType::Todo => &mut self.todo,
-                                    ListType::Done => &mut self.done,
-                                };
+                                let list = get_list!(self, mut self.list_type);
                                 list[self.current_index as usize] = s;
                             },
                         }
