@@ -272,15 +272,10 @@ impl ListApp{
 
     fn draw_list(&mut self, list_type: ListType){
         let x = self.get_x_pos(list_type);
-        let title = match list_type {
-            ListType::Todo => "Todo".green().bold(),
-            ListType::Done => "Done".red().bold(),
-        };
+        let title = self.get_title(list_type);
         let list = get_list!(self, list_type);
-        let prefix = match list_type {
-            ListType::Todo => "[ ] ".to_string(),
-            ListType::Done => format!("[{}] ", "X".red().bold()),
-        };
+        let prefix = self.get_prefix(list_type);
+        assert!(title.len() == CHECKBOX_WIDTH, "Length of prefix must be CHECKBOX_WIDTH");
         write!( // go to beginning and print title
             self.stdout,
             "{}[{}]",
@@ -332,7 +327,7 @@ impl ListApp{
     }
 
     fn move_up(&mut self){
-        let len = self.get_curr_list_len();
+        let len = self.get_list_len(self.list_type);
         if len == 0 {
             return
         }
@@ -343,7 +338,7 @@ impl ListApp{
     }
 
     fn move_down(&mut self){
-        let len = self.get_curr_list_len();
+        let len = self.get_list_len(self.list_type);
         if len == 0 {
             return
         }
@@ -356,7 +351,21 @@ impl ListApp{
     }
 
     fn move_to_bottom(&mut self){
-        self.current_index = self.get_curr_list_len() - 1;
+        self.current_index = self.get_list_len(self.list_type) - 1;
+    }
+
+    fn get_title(&self, list_type: ListType) -> ColoredString {
+        match list_type {
+            ListType::Todo => "Todo".green().bold(),
+            ListType::Done => "Done".red().bold(),
+        }
+    }
+
+    fn get_prefix(&self, list_type: ListType) -> String {
+        match list_type {
+            ListType::Todo => "[ ] ".to_string(),
+            ListType::Done => format!("[{}] ", "X".red().bold()),
+        }
     }
 
     fn get_x_pos(&self, list_type: ListType) -> u16 {
@@ -366,8 +375,8 @@ impl ListApp{
         }
     }
 
-    fn get_curr_list_len(&self) -> u16{
-        match self.list_type {
+    fn get_list_len(&self, list_type: ListType) -> u16{
+        match list_type {
             ListType::Todo => self.todo.len() as u16,
             ListType::Done => self.done.len() as u16,
         }
@@ -375,7 +384,7 @@ impl ListApp{
 
     fn swap_list(&mut self){
         self.list_type = self.list_type.next();
-        let len = self.get_curr_list_len();
+        let len = self.get_list_len(self.list_type);
         if len == 0 {
             self.current_index = 0;
             return
