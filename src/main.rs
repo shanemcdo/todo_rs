@@ -77,7 +77,7 @@ enum InputMode {
     Insert(InputDestination),
 }
 
-fn word_wrap(s: String, max_length: usize) -> Vec<String> {
+fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
     let mut res = vec![];
     let mut s = s.trim().to_string();
     'outer: loop {
@@ -200,7 +200,7 @@ impl ListApp{
         // plus 1 again for the title offset
         let mut pos = 2;
         for i in 0..self.current_index {
-            pos += word_wrap(list[i as usize].clone(), max).len();
+            pos += word_wrap(&list[i as usize], max).len();
         }
         let x = self.get_x_pos(self.list_type);
         if pos as u16 > self.terminal_size.1 { // offscreen
@@ -280,7 +280,7 @@ impl ListApp{
                 break;
             }
             let mut first = true;
-            for subline in word_wrap(line.clone(), max as usize) {
+            for subline in word_wrap(&line, max as usize) {
                 let checkbox = if first {
                     first = false;
                     &checkbox
@@ -343,6 +343,16 @@ impl ListApp{
 
     fn move_to_bottom(&mut self){
         self.current_index = self.get_list_len(self.list_type) - 1;
+    }
+
+    fn get_y_offset(&mut self, list_type: ListType) -> u16 {
+        let list = get_list!(self, list_type);
+        let max = self.get_max_word_wrap_length();
+        let mut res = 0u16;
+        for line in list {
+            res += word_wrap(&line, max).len() as u16;
+        }
+        res
     }
 
     fn get_title(&self, list_type: ListType) -> ColoredString {
