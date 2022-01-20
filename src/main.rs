@@ -406,8 +406,9 @@ impl ListApp{
         if len == 0 {
             self.current_index = 0;
             return
+        } else if self.current_index > len {
+            self.current_index = len - 1;
         }
-        self.current_index %= len;
     }
     
     fn check_item(&mut self){
