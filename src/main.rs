@@ -48,7 +48,7 @@ macro_rules! get_list {
     );
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ListType {
     Todo,
     Done,
@@ -267,7 +267,11 @@ impl ListApp{
         let x = self.get_x_pos(list_type);
         let title = self.get_title(list_type);
         let checkbox = self.get_checkbox(list_type);
-        let mut offset = self.get_y_offset(list_type);
+        let mut offset = if list_type == self.list_type {
+            self.get_y_offset(list_type)
+        } else {
+            0
+        };
         write!( // go to beginning and print title
             self.stdout,
             "{}[{}]",
