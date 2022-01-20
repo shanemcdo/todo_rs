@@ -67,9 +67,8 @@ fn word_wrap(s: String, max_length: usize) -> Vec<String> {
     'outer: loop {
         let mut prev_word = 0;
         for (i, ch) in s.chars().enumerate() {
-            match ch {
-                'a'..='z' | 'A'..='Z' | '0'..='9' => (), // if its a letter
-                _ => prev_word = i, // its a sperator
+            if !ch.is_alphanumeric(){
+                prev_word = i;
             }
             if i + 1 >= max_length {
                 if prev_word == 0 {
