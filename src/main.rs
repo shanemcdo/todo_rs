@@ -267,6 +267,7 @@ impl ListApp{
         let x = self.get_x_pos(list_type);
         let title = self.get_title(list_type);
         let checkbox = self.get_checkbox(list_type);
+        let mut offset = self.get_y_offset(list_type);
         write!( // go to beginning and print title
             self.stdout,
             "{}[{}]",
@@ -275,10 +276,7 @@ impl ListApp{
         ).expect("Could not write to stdout");
         let max = self.get_max_word_wrap_length();
         let mut idx = 0u16;
-        for line in list {
-            if idx + 2 > self.terminal_size.1 { // offscreen
-                break;
-            }
+        'outer: for line in list {
             let mut first = true;
             for subline in word_wrap(&line, max as usize) {
                 let checkbox = if first {
@@ -287,6 +285,13 @@ impl ListApp{
                 } else {
                     "    "
                 };
+                if idx + 2 > self.terminal_size.1 { // offscreen
+                    break 'outer;
+                }
+                if idx < offset {
+                    offset -= 1;
+                    continue;
+                }
                 write!(
                     self.stdout,
                     "{}{}{}",
@@ -345,14 +350,18 @@ impl ListApp{
         self.current_index = self.get_list_len(self.list_type) - 1;
     }
 
-    fn get_y_offset(&mut self, list_type: ListType) -> u16 {
+    fn get_y_offset(&self, list_type: ListType) -> u16 {
         let list = get_list!(self, list_type);
         let max = self.get_max_word_wrap_length();
-        let mut res = 0u16;
-        for line in list {
-            res += word_wrap(&line, max).len() as u16;
+        let mut total = 1u16;
+        for (i, line) in list.into_iter().enumerate() {
+            if i > self.current_index as usize {
+                break;
+            }
+            let l = word_wrap(&line, max).len() as u16;
+            total += l;
         }
-        res
+        total.checked_sub(self.terminal_size.1).unwrap_or(0)
     }
 
     fn get_title(&self, list_type: ListType) -> ColoredString {
