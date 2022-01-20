@@ -192,14 +192,6 @@ impl ListApp{
         }
     }
 
-    fn get_max_word_wrap_length(&self) -> usize{
-        if self.one_pane {
-            self.terminal_size.0 as usize - CHECKBOX_WIDTH
-        } else {
-            self.terminal_size.0 as usize / 2 - CHECKBOX_WIDTH
-         }
-    }
-
     fn go_to_current_index(&mut self){
         let max = self.get_max_word_wrap_length();
         let list = get_list!(self, self.list_type);
@@ -274,8 +266,8 @@ impl ListApp{
         let x = self.get_x_pos(list_type);
         let title = self.get_title(list_type);
         let list = get_list!(self, list_type);
-        let prefix = self.get_prefix(list_type);
-        assert!(title.len() == CHECKBOX_WIDTH, "Length of prefix must be CHECKBOX_WIDTH");
+        let checkbox = self.get_checkbox(list_type);
+        assert!(title.len() == CHECKBOX_WIDTH, "Length of checkbox must be CHECKBOX_WIDTH");
         write!( // go to beginning and print title
             self.stdout,
             "{}[{}]",
@@ -290,9 +282,9 @@ impl ListApp{
             }
             let mut first = true;
             for subline in word_wrap(line.clone(), max as usize) {
-                let prefix = if first {
+                let checkbox = if first {
                     first = false;
-                    &prefix
+                    &checkbox
                 } else {
                     "    "
                 };
@@ -300,7 +292,7 @@ impl ListApp{
                     self.stdout,
                     "{}{}{}",
                     termion::cursor::Goto(x, idx + 2),
-                    prefix,
+                    checkbox,
                     subline.color(colorize(idx as usize)),
                 ).expect("Could not write line");
                 idx += 1;
@@ -361,7 +353,7 @@ impl ListApp{
         }
     }
 
-    fn get_prefix(&self, list_type: ListType) -> String {
+    fn get_checkbox(&self, list_type: ListType) -> String {
         match list_type {
             ListType::Todo => "[ ] ".to_string(),
             ListType::Done => format!("[{}] ", "X".red().bold()),
@@ -380,6 +372,14 @@ impl ListApp{
             ListType::Todo => self.todo.len() as u16,
             ListType::Done => self.done.len() as u16,
         }
+    }
+
+    fn get_max_word_wrap_length(&self) -> usize{
+        if self.one_pane {
+            self.terminal_size.0 as usize - CHECKBOX_WIDTH
+        } else {
+            self.terminal_size.0 as usize / 2 - CHECKBOX_WIDTH
+         }
     }
 
     fn swap_list(&mut self){
