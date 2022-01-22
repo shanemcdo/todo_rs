@@ -171,7 +171,7 @@ struct Args {
     print: bool,
 }
 
-struct ListApp {
+struct TodoApp {
     running: bool,
     stdin: termion::input::Keys<termion::AsyncReader>,
     stdout: termion::raw::RawTerminal<io::Stdout>,
@@ -186,7 +186,7 @@ struct ListApp {
     one_pane: bool,
 }
 
-impl ListApp{
+impl TodoApp{
     fn new() -> Self{
         let terminal_size = termion::terminal_size().expect("Could not get terminal size"); 
         Self {
@@ -618,6 +618,6 @@ fn main() {
     } else if args.print {
         print_todo();
     } else {
-        ListApp::new().run();
+        TodoApp::new().run();
     }
 }
