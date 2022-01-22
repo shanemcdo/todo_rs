@@ -83,6 +83,10 @@ fn print_list(list: &Vec<String>) {
     }
 }
 
+fn print_todo(){
+    print_list(&load_list(TODO_LIST));
+}
+
 fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
     let mut res = vec![];
     let mut s = s.trim().to_string();
@@ -600,26 +604,21 @@ impl ListApp{
         }
         true
     }
-
-    fn print_todo(&self){
-        print_list(&self.todo);
-    }
 }
 
 fn main() {
     let args = Args::from_args();
     termion::terminal_size().unwrap_or_else(|_|{
-        print_list(&load_list(TODO_LIST));
+        print_todo();
         std::process::exit(0)
     });
-    let mut app = ListApp::new();
     if args.add != "" {
         let mut list = load_list(TODO_LIST);
         list.push(args.add);
         save_list(TODO_LIST, &list);
     } else if args.print {
-        app.print_todo();
+        print_todo();
     } else {
-        app.run();
+        ListApp::new().run();
     }
 }
