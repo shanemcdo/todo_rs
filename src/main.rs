@@ -574,8 +574,7 @@ impl ListApp{
                     Key::Char('\n') => {
                         self.input_mode = InputMode::Normal;
                         self.input_string_index = 0;
-                        let mut s = "".to_string();
-                        std::mem::swap(&mut s, &mut self.input_string);
+                        let s = std::mem::take(&mut self.input_string);
                         match dest {
                             InputDestination::NewItem => self.todo.push(s),
                             InputDestination::NewItemBefore => {
