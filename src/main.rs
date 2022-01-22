@@ -135,13 +135,101 @@ fn colorize(index: usize) -> Color {
     COLORS[index % COLORS_LEN].clone()
 }
 
+struct List {
+    items: Vec<String>,
+    list_type: ListType,
+    current_index: usize,
+    prev_y_offset: usize,
+    y_offset: usize,
+}
+
+impl List {
+    fn new(items: Vec<String>, list_type: ListType) -> Self {
+        Self {
+            items,
+            list_type,
+            current_index: 0,
+            prev_y_offset: 0,
+            y_offset: 0,
+        }
+    }
+
+    fn draw(&mut self, pos: (u16, u16), bounds: (u16, u16)){
+        let title = self.get_title();
+        let checkbox = self.get_checkbox();
+        let mut offset = self.y_offset as u16;
+        print!(
+            "{}[{}]",
+            termion::cursor::Goto(pos.0, pos.1),
+            title,
+        );
+        let max = bounds.0 - CHECKBOX_WIDTH as u16;
+        let mut idx = 0u16;
+        'outer: for line in &self.items {
+            let mut first = true;
+            for subline in word_wrap(&line, max as usize) {
+                let checkbox = if first {
+                    first = false;
+                    &checkbox
+                } else {
+                    "    "
+                };
+                if idx + 2 > bounds.1 { // offscreen
+                    break 'outer;
+                }
+                if idx < offset {
+                    offset -= 1;
+                    continue;
+                }
+                print!(
+                    "{}{}{}",
+                    termion::cursor::Goto(pos.0, pos.1 + idx + 1),
+                    checkbox,
+                    subline.color(colorize(idx as usize)),
+                );
+                idx += 1;
+            }
+        }
+    }
+
+    fn get_title(&self) -> ColoredString {
+        match self.list_type {
+            ListType::Todo => "Todo".green().bold(),
+            ListType::Done => "Done".red().bold(),
+        }
+    }
+
+    fn get_checkbox(&self) -> String {
+        match self.list_type {
+            ListType::Todo => "[ ] ".to_string(),
+            ListType::Done => format!("[{}] ", "X".red().bold()),
+        }
+    }
+
+    fn move_up(&mut self) {
+        let len = self.items.len();
+        if self.current_index == 0 {
+            self.current_index = len - 1;
+        } else {
+            self.current_index -= 1;
+        }
+    }
+
+    fn move_down(&mut self) {
+        let len = self.items.len();
+        self.current_index += 1;
+        if self.current_index >= len {
+            self.current_index = 0;
+        }
+    }
+}
+
 struct TodoApp {
     running: bool,
     stdin: termion::input::Keys<termion::AsyncReader>,
     stdout: termion::raw::RawTerminal<io::Stdout>,
-    todo: Vec<String>,
-    done: Vec<String>,
-    current_index: u16,
+    todo: List,
+    done: List,
     list_type: ListType,
     input_mode: InputMode,
     input_string: String,
@@ -157,9 +245,8 @@ impl TodoApp{
             running: true,
             stdin: termion::async_stdin().keys(),
             stdout: io::stdout().into_raw_mode().unwrap(),
-            todo: load_list(TODO_LIST),
-            done: load_list(DONE_LIST),
-            current_index: 0,
+            todo: List::new(load_list(TODO_LIST), ListType::Todo),
+            done: List::new(load_list(DONE_LIST), ListType::Done),
             list_type: ListType::Todo,
             input_mode: InputMode::Normal,
             input_string: "".to_string(),
@@ -236,52 +323,6 @@ impl TodoApp{
         save_list(TODO_LIST, &self.todo);
         save_list(DONE_LIST, &self.done);
         self.clear();
-    }
-
-    fn draw_list(&mut self, list_type: ListType){
-        let list = get_list!(self, list_type);
-        let x = self.get_x_pos(list_type);
-        let title = self.get_title(list_type);
-        let checkbox = self.get_checkbox(list_type);
-        let mut offset = if list_type == self.list_type {
-            self.get_y_offset(list_type)
-        } else {
-            0
-        };
-        write!( // go to beginning and print title
-            self.stdout,
-            "{}[{}]",
-            termion::cursor::Goto(x, 1),
-            title,
-        ).expect("Could not write to stdout");
-        let max = self.get_max_word_wrap_length();
-        let mut idx = 0u16;
-        'outer: for line in list {
-            let mut first = true;
-            for subline in word_wrap(&line, max as usize) {
-                let checkbox = if first {
-                    first = false;
-                    &checkbox
-                } else {
-                    "    "
-                };
-                if idx + 2 > self.terminal_size.1 { // offscreen
-                    break 'outer;
-                }
-                if idx < offset {
-                    offset -= 1;
-                    continue;
-                }
-                write!(
-                    self.stdout,
-                    "{}{}{}",
-                    termion::cursor::Goto(x, idx + 2),
-                    checkbox,
-                    subline.color(colorize(idx as usize)),
-                ).expect("Could not write line");
-                idx += 1;
-            }
-        }
     }
 
     fn draw_todo(&mut self){
@@ -390,7 +431,7 @@ impl TodoApp{
             self.current_index = len - 1;
         }
     }
-    
+
     fn check_item(&mut self){
         let mut len = self.todo.len() as u16;
         if len == 0 {
