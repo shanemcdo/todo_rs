@@ -77,6 +77,12 @@ enum InputMode {
     Insert(InputDestination),
 }
 
+fn print_list(list: &Vec<String>) {
+    for line in list {
+        println!("{}", line);
+    }
+}
+
 fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
     let mut res = vec![];
     let mut s = s.trim().to_string();
@@ -155,7 +161,10 @@ fn colorize(index: usize) -> Color {
 struct Args {
     /// Directly add an item to the todo list
     #[structopt(short, long, default_value = "")]
-    add: String
+    add: String,
+    /// Print list instead of interactive prompt
+    #[structopt(short, long)]
+    print: bool,
 }
 
 struct ListApp {
@@ -591,15 +600,26 @@ impl ListApp{
         }
         true
     }
+
+    fn print_todo(&self){
+        print_list(&self.todo);
+    }
 }
 
 fn main() {
     let args = Args::from_args();
+    termion::terminal_size().unwrap_or_else(|_|{
+        print_list(&load_list(TODO_LIST));
+        std::process::exit(0)
+    });
+    let mut app = ListApp::new();
     if args.add != "" {
         let mut list = load_list(TODO_LIST);
         list.push(args.add);
         save_list(TODO_LIST, &list);
+    } else if args.print {
+        app.print_todo();
     } else {
-        ListApp::new().run();
+        app.run();
     }
 }
