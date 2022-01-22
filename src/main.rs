@@ -222,6 +222,30 @@ impl List {
             self.current_index = 0;
         }
     }
+
+    fn shift_up(&mut self) {
+        let len = self.items.len();
+        if len <= 0 {
+            return;
+        }
+        if self.current_index > 0 {
+            self.items.swap(self.current_index, self.current_index - 1);
+        } else {
+            self.items.push(self.items.remove(0));
+        }
+    }
+
+    fn shift_down(&mut self) {
+        let len = self.items.len();
+        if len <= 0 {
+            return;
+        }
+        if self.current_index + 1 < len {
+            self.items.swap(self.current_index, self.current_index + 1);
+        } else {
+            self.items.insert(0, self.items.remove(len - 1))
+        }
+    }
 }
 
 struct TodoApp {
