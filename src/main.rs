@@ -156,13 +156,12 @@ impl List {
         if self.out_of_bounds(size){
             self.update_y_offset(size);
         }
-        let title = self.get_title();
         let checkbox = self.get_checkbox();
         let mut offset = self.y_offset as u16;
         print!(
             "{}[{}]",
             termion::cursor::Goto(pos.0, pos.1),
-            title,
+            self.get_title(),
         );
         let max = size.0 - CHECKBOX_WIDTH as u16;
         let mut idx = 0u16;
