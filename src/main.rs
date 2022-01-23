@@ -152,7 +152,7 @@ impl List {
             cursor::MoveTo(pos.0, pos.1),
             self.get_title(),
         )?;
-        let max = size.0 - CHECKBOX_WIDTH as u16;
+        let max = self.get_max_line_width(size);
         let mut idx = 0u16;
         'outer: for line in &self.items {
             let mut first = true;
@@ -180,6 +180,10 @@ impl List {
             }
         }
         Ok(())
+    }
+
+    fn get_max_line_width(&self, size: (u16, u16)) -> usize {
+        size.0 as usize - CHECKBOX_WIDTH
     }
 
     fn get_title(&self) -> PrintStyledContent<&str> {
@@ -302,7 +306,7 @@ impl List {
     }
 
     fn get_y_pos(&self, size: (u16, u16)) -> usize {
-        let max = size.0 as usize - CHECKBOX_WIDTH;
+        let max = self.get_max_line_width(size);
         let mut y = 1; // start at one for title
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line
