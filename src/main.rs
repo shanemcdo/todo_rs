@@ -206,8 +206,24 @@ impl List {
         }
     }
 
+    fn move_to_top(&mut self){
+        self.current_index = 0;
+    }
+
+    fn move_to_bottom(&mut self){
+        let len = self.items.len();
+        self.current_index = if len == 0 {
+            0
+        } else {
+            len - 1
+        };
+    }
+
     fn move_up(&mut self) {
         let len = self.items.len();
+        if len == 0 {
+            return;
+        }
         if self.current_index == 0 {
             self.current_index = len - 1;
         } else {
@@ -217,10 +233,11 @@ impl List {
 
     fn move_down(&mut self) {
         let len = self.items.len();
-        self.current_index += 1;
-        if self.current_index >= len {
-            self.current_index = 0;
+        if len == 0 {
+            return;
         }
+        self.current_index += 1;
+        self.current_index %= len;
     }
 
     fn shift_up(&mut self) {
@@ -231,7 +248,8 @@ impl List {
         if self.current_index > 0 {
             self.items.swap(self.current_index, self.current_index - 1);
         } else {
-            self.items.push(self.items.remove(0));
+            let item = self.items.remove(0);
+            self.items.push(item);
         }
     }
 
@@ -243,8 +261,44 @@ impl List {
         if self.current_index + 1 < len {
             self.items.swap(self.current_index, self.current_index + 1);
         } else {
-            self.items.insert(0, self.items.remove(len - 1))
+            let item = self.items.remove(len - 1);
+            self.items.insert(0, item)
         }
+    }
+
+    fn remove(&mut self) -> Option<String> {
+        if self.items.len() < 1 {
+            None
+        } else {
+            let res = Some(self.items.remove(self.current_index));
+            let len = self.items.len();
+            if len == 0 {
+                self.current_index = 0
+            } else if self.current_index >= len {
+                self.current_index = len - 1;
+            }
+            res
+        }
+    }
+
+    fn add(&mut self, item: String) {
+        self.items.push(item);
+    }
+    
+    fn insert(&mut self, item: String, index: usize) {
+        self.items.insert(index, item); 
+    }
+
+    fn insert_before(&mut self, item: String) {
+        self.insert(item, self.current_index);
+    }
+
+    fn insert_after(&mut self, item: String) {
+        self.insert(item, self.current_index + 1);
+    }
+
+    fn set_current(&mut self, item: String) {
+        self.items[self.current_index] = item;
     }
 }
 
@@ -280,22 +334,22 @@ impl TodoApp{
         }
     }
 
-    fn go_to_current_index(&mut self){
-        let max = self.get_max_word_wrap_length();
-        let list = get_list!(self, self.list_type);
-        let offset = self.get_y_offset(self.list_type);
-        // the logic is the position of the current index is the sum
-        // is the sum of all the lines before the current line plus 1
-        // plus 1 again for the title offset
-        let mut pos = 2;
-        for i in 0..self.current_index {
-            pos += word_wrap(&list[i as usize], max).len();
-        }
-        let x = self.get_x_pos(self.list_type);
-        let pos = (pos as u16).checked_sub(offset).unwrap_or(2);
-        write!(self.stdout, "{}", termion::cursor::Goto(x, pos))
-            .expect("Could not move cursor");
-    }
+    // fn go_to_current_index(&mut self){
+    //     let max = self.get_max_word_wrap_length();
+    //     let list = get_list!(self, self.list_type);
+    //     let offset = self.get_y_offset(self.list_type);
+    //     // the logic is the position of the current index is the sum
+    //     // is the sum of all the lines before the current line plus 1
+    //     // plus 1 again for the title offset
+    //     let mut pos = 2;
+    //     for i in 0..self.current_index {
+    //         pos += word_wrap(&list[i as usize], max).len();
+    //     }
+    //     let x = self.get_x_pos(self.list_type);
+    //     let pos = (pos as u16).checked_sub(offset).unwrap_or(2);
+    //     write!(self.stdout, "{}", termion::cursor::Goto(x, pos))
+    //         .expect("Could not move cursor");
+    // }
 
     fn redraw(&mut self){
         self.clear();
@@ -310,7 +364,7 @@ impl TodoApp{
                     self.draw_todo();
                     self.draw_done();
                 }
-                self.go_to_current_index();
+                // self.go_to_current_index();
             }
             InputMode::Insert(dest) => {
                 let leader = match dest {
@@ -344,17 +398,35 @@ impl TodoApp{
                 self.redraw();
             }
         }
-        save_list(TODO_LIST, &self.todo);
-        save_list(DONE_LIST, &self.done);
+        save_list(TODO_LIST, &self.todo.items);
+        save_list(DONE_LIST, &self.done.items);
         self.clear();
     }
 
     fn draw_todo(&mut self){
-        self.draw_list(ListType::Todo);
+        self.todo.draw(
+            (1, 1),
+            if self.one_pane {
+                self.terminal_size
+            } else {
+                (self.terminal_size.0 / 2, self.terminal_size.1)
+            }
+        );
     }
 
     fn draw_done(&mut self){
-        self.draw_list(ListType::Done);
+        self.done.draw(
+            if self.one_pane {
+                (1, 1)
+            } else {
+                (self.terminal_size.0 / 2 + 1, 1)
+            },
+            if self.one_pane {
+                self.terminal_size
+            } else {
+                (self.terminal_size.0 / 2, self.terminal_size.1)
+            }
+        );
     }
 
     fn clear(&mut self) {
@@ -367,181 +439,105 @@ impl TodoApp{
             .expect("Could not clear screen");
     }
 
-    fn move_up(&mut self){
-        let len = self.get_list_len(self.list_type);
-        if len == 0 {
-            return
-        }
-        if self.current_index == 0 {
-            self.current_index = len;
-        }
-        self.current_index -= 1;
-    }
+    // fn get_y_offset(&self, list_type: ListType) -> u16 {
+    //     let list = get_list!(self, list_type);
+    //     let max = self.get_max_word_wrap_length();
+    //     let mut total = 1u16;
+    //     for (i, line) in list.into_iter().enumerate() {
+    //         if i > self.current_index as usize {
+    //             break;
+    //         }
+    //         let l = word_wrap(&line, max).len() as u16;
+    //         total += l;
+    //     }
+    //     total.checked_sub(self.terminal_size.1).unwrap_or(0)
+    // }
 
-    fn move_down(&mut self){
-        let len = self.get_list_len(self.list_type);
-        if len == 0 {
-            return
-        }
-        self.current_index += 1;
-        self.current_index %= len;
-    }
+    // fn get_x_pos(&self, list_type: ListType) -> u16 {
+    //     match list_type {
+    //         ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
+    //         _ => 1, // if self.one_pane or ListType::Todo
+    //     }
+    // }
 
-    fn move_to_top(&mut self){
-        self.current_index = 0;
-    }
+    // fn get_list_len(&self, list_type: ListType) -> u16{
+    //     match list_type {
+    //         ListType::Todo => self.todo.len() as u16,
+    //         ListType::Done => self.done.len() as u16,
+    //     }
+    // }
 
-    fn move_to_bottom(&mut self){
-        self.current_index = self.get_list_len(self.list_type) - 1;
-    }
-
-    fn get_y_offset(&self, list_type: ListType) -> u16 {
-        let list = get_list!(self, list_type);
-        let max = self.get_max_word_wrap_length();
-        let mut total = 1u16;
-        for (i, line) in list.into_iter().enumerate() {
-            if i > self.current_index as usize {
-                break;
-            }
-            let l = word_wrap(&line, max).len() as u16;
-            total += l;
-        }
-        total.checked_sub(self.terminal_size.1).unwrap_or(0)
-    }
-
-    fn get_title(&self, list_type: ListType) -> ColoredString {
-        match list_type {
-            ListType::Todo => "Todo".green().bold(),
-            ListType::Done => "Done".red().bold(),
-        }
-    }
-
-    fn get_checkbox(&self, list_type: ListType) -> String {
-        match list_type {
-            ListType::Todo => "[ ] ".to_string(),
-            ListType::Done => format!("[{}] ", "X".red().bold()),
-        }
-    }
-
-    fn get_x_pos(&self, list_type: ListType) -> u16 {
-        match list_type {
-            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
-            _ => 1, // if self.one_pane or ListType::Todo
-        }
-    }
-
-    fn get_list_len(&self, list_type: ListType) -> u16{
-        match list_type {
-            ListType::Todo => self.todo.len() as u16,
-            ListType::Done => self.done.len() as u16,
-        }
-    }
-
-    fn get_max_word_wrap_length(&self) -> usize{
-        if self.one_pane {
-            self.terminal_size.0 as usize - CHECKBOX_WIDTH
-        } else {
-            self.terminal_size.0 as usize / 2 - CHECKBOX_WIDTH
-         }
-    }
+    // fn get_max_word_wrap_length(&self) -> usize{
+    //     if self.one_pane {
+    //         self.terminal_size.0 as usize - CHECKBOX_WIDTH
+    //     } else {
+    //         self.terminal_size.0 as usize / 2 - CHECKBOX_WIDTH
+    //      }
+    // }
 
     fn swap_list(&mut self){
         self.list_type = self.list_type.next();
-        let len = self.get_list_len(self.list_type);
-        if len == 0 {
-            self.current_index = 0;
-            return
-        } else if self.current_index > len {
-            self.current_index = len - 1;
-        }
     }
 
     fn check_item(&mut self){
-        let mut len = self.todo.len() as u16;
-        if len == 0 {
-            return
-        }
-        self.done.push(self.todo.remove(self.current_index as usize));
-        len -= 1;
-        if len == 0 {
-            self.current_index = 0;
-            return
-        }
-        if self.current_index >= len {
-            self.current_index = len - 1;
+        if let Some(item) = self.todo.remove() {
+            self.done.add(item);
         }
     }
 
     fn uncheck_item(&mut self){
-        let mut len = self.done.len() as u16;
-        if len == 0 {
-            return
-        }
-        self.todo.push(self.done.remove(self.current_index as usize));
-        len -= 1;
-        if len == 0 {
-            self.current_index = 0;
-            return
-        }
-        if self.current_index >= len {
-            self.current_index = len - 1;
+        if let Some(item) = self.done.remove() {
+            self.todo.add(item);
         }
     }
 
     fn delete_item(&mut self){
-        let _ = self.done.remove(self.current_index as usize);
-        let len = self.done.len() as u16;
-        if len == 0 {
-            self.current_index = 0;
-            return
-        }
-        if self.current_index >= len {
-            self.current_index = len - 1;
-        }
+        self.done.remove();
     }
 
-    fn shift_up(&mut self){
-        let list = match self.list_type {
-            ListType::Todo => &mut self.todo,
-            ListType::Done => &mut self.done,
-        };
-        let len = list.len();
-        if len <= 0 {
-            return;
-        }
-        let idx = self.current_index as usize;
-        if idx > 0 {
-            list.swap(idx, idx - 1);
-        } else {
-            let item = list.remove(0);
-            list.push(item);
-        }
-        self.move_up();
-    }
+    // fn shift_up(&mut self){
+    //     let list = match self.list_type {
+    //         ListType::Todo => &mut self.todo,
+    //         ListType::Done => &mut self.done,
+    //     };
+    //     let len = list.len();
+    //     if len <= 0 {
+    //         return;
+    //     }
+    //     let idx = self.current_index as usize;
+    //     if idx > 0 {
+    //         list.swap(idx, idx - 1);
+    //     } else {
+    //         let item = list.remove(0);
+    //         list.push(item);
+    //     }
+    //     self.move_up();
+    // }
 
-    fn shift_down(&mut self){
-        let list = match self.list_type {
-            ListType::Todo => &mut self.todo,
-            ListType::Done => &mut self.done,
-        };
-        let len = list.len();
-        if len <= 0 {
-            return;
-        }
-        let idx = self.current_index as usize;
-        if idx + 1 < len {
-            list.swap(idx, idx + 1);
-        } else {
-            let item = list.remove(len - 1);
-            list.insert(0, item);
-        }
-        self.move_down();
-    }
+    // fn shift_down(&mut self){
+    //     let list = match self.list_type {
+    //         ListType::Todo => &mut self.todo,
+    //         ListType::Done => &mut self.done,
+    //     };
+    //     let len = list.len();
+    //     if len <= 0 {
+    //         return;
+    //     }
+    //     let idx = self.current_index as usize;
+    //     if idx + 1 < len {
+    //         list.swap(idx, idx + 1);
+    //     } else {
+    //         let item = list.remove(len - 1);
+    //         list.insert(0, item);
+    //     }
+    //     self.move_down();
+    // }
 
     /// handle keyboard input
     /// returns true if redraw needs to be called again, otherwise returns false
     fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
+            let mut list = get_list!(self, mut self.list_type);
             match self.input_mode {
                 InputMode::Normal => match (key, self.list_type) {
                     (Key::Char('q') | Key::Esc, _) => self.running = false,
@@ -552,19 +548,19 @@ impl TodoApp{
                     (Key::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                     (Key::Char(ch), _) => match ch {
                         'e' => {
-                            self.input_mode = InputMode::Insert(InputDestination::EditItem);
-                            let list = get_list!(self, self.list_type);
-                            self.input_string = list[self.current_index as usize].clone();
-                            self.input_string_index = self.input_string.len();
+                            // self.input_mode = InputMode::Insert(InputDestination::EditItem);
+                            // let list = get_list!(self, self.list_type);
+                            // self.input_string = list[self.current_index as usize].clone();
+                            // self.input_string_index = self.input_string.len();
                         },
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
-                        'j' => self.move_down(),
-                        'J' => self.shift_down(),
-                        'k' => self.move_up(),
-                        'K' => self.shift_up(),
-                        'g' => self.move_to_top(),
-                        'G' => self.move_to_bottom(),
+                        'j' => list.move_down(),
+                        'J' => list.shift_down(),
+                        'k' => list.move_up(),
+                        'K' => list.shift_up(),
+                        'g' => list.move_to_top(),
+                        'G' => list.move_to_bottom(),
                         _ => return false,
                     }
                     _ => return false,
@@ -605,19 +601,14 @@ impl TodoApp{
                         self.input_string_index = 0;
                         let s = std::mem::take(&mut self.input_string);
                         match dest {
-                            InputDestination::NewItem => self.todo.push(s),
+                            InputDestination::NewItem => self.todo.add(s),
                             InputDestination::NewItemBefore => {
-                                let idx = self.current_index as usize; // appease borrow checker
-                                self.todo.insert(idx, s);
+                                self.todo.insert_before(s);
                             }
                             InputDestination::NewItemAfter => {
-                                let idx = self.current_index as usize + 1; // appease borrow checker
-                                self.todo.insert(idx, s);
+                                self.todo.insert_after(s);
                             }
-                            InputDestination::EditItem => {
-                                let list = get_list!(self, mut self.list_type);
-                                list[self.current_index as usize] = s;
-                            },
+                            InputDestination::EditItem => list.set_current(s),
                         }
                     },
                     Key::Char(ch) => {
@@ -632,6 +623,7 @@ impl TodoApp{
         }
         true
     }
+
 }
 
 /// A program that acts as a todo list
