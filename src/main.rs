@@ -332,7 +332,12 @@ impl List {
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
-        self.y_offset = (self.get_y_pos(size) + 1).checked_sub(size.1 as usize).unwrap_or(0)
+        let y = self.get_y_pos(size);
+        self.y_offset = if y  > self.y_offset {
+            (y + 1).checked_sub(size.1 as usize).unwrap_or(0)
+        } else {
+            y - 1
+        }
     }
 
     fn out_of_bounds(&mut self, size: (u16, u16)) -> bool {
