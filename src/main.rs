@@ -314,7 +314,7 @@ impl List {
         let y = y.checked_sub(self.y_offset).unwrap_or(1) as u16;
         print!(
             "{}",
-            termion::cursor::Goto(pos.0, pos.0 + y),
+            termion::cursor::Goto(pos.0, pos.1 + y),
         );
     }
 
