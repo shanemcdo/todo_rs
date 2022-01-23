@@ -1,24 +1,38 @@
-use colored::*;
 use std::io::{self, prelude::*, BufRead};
 use structopt::StructOpt;
-use termion::{self, event::Key, input::TermRead, raw::IntoRawMode};
+use std::time::Duration;
+use crossterm::{
+    terminal,
+    queue,
+    cursor,
+    event::{self, Event, KeyCode},
+    style::{
+        style,
+        Color,
+        Print,
+        Stylize,
+        Attribute,
+        StyledContent,
+        PrintStyledContent,
+    },
+};
 
 const TODO_LIST: &str = std::env!("TODO_LIST");
 const DONE_LIST: &str = std::env!("TODO_DONE_LIST");
 const COLORS_LEN: usize = 12;
 const COLORS: [Color; COLORS_LEN] = [
-    Color::TrueColor{r: 255, g: 0, b: 0},
-    Color::TrueColor{r: 255, g: 128, b: 0},
-    Color::TrueColor{r: 255, g: 255, b: 0},
-    Color::TrueColor{r: 128, g: 255, b: 0},
-    Color::TrueColor{r: 0, g: 255, b: 0},
-    Color::TrueColor{r: 0, g: 255, b: 128},
-    Color::TrueColor{r: 0, g: 255, b: 255},
-    Color::TrueColor{r: 0, g: 128, b: 255},
-    Color::TrueColor{r: 0, g: 0, b: 255},
-    Color::TrueColor{r: 128, g: 0, b: 255},
-    Color::TrueColor{r: 255, g: 0, b: 255},
-    Color::TrueColor{r: 255, g: 0, b: 128}
+    Color::Rgb{r: 255, g: 0, b: 0},
+    Color::Rgb{r: 255, g: 128, b: 0},
+    Color::Rgb{r: 255, g: 255, b: 0},
+    Color::Rgb{r: 128, g: 255, b: 0},
+    Color::Rgb{r: 0, g: 255, b: 0},
+    Color::Rgb{r: 0, g: 255, b: 128},
+    Color::Rgb{r: 0, g: 255, b: 255},
+    Color::Rgb{r: 0, g: 128, b: 255},
+    Color::Rgb{r: 0, g: 0, b: 255},
+    Color::Rgb{r: 128, g: 0, b: 255},
+    Color::Rgb{r: 255, g: 0, b: 255},
+    Color::Rgb{r: 255, g: 0, b: 128}
 ];
 const MAX_WIDTH_SINGLE_PANE: u16 = 55;
 const CHECKBOX_WIDTH: usize = 4;
@@ -143,16 +157,15 @@ impl List {
         }
     }
 
-    fn draw(&mut self, pos: (u16, u16), size: (u16, u16), stdout: &mut termion::raw::RawTerminal<io::Stdout>) {
+    fn draw(&mut self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) {
         if self.out_of_bounds(size) {
             self.update_y_offset(size);
         }
         let checkbox = self.get_checkbox();
         let mut offset = self.y_offset as u16;
-        write!(
+        queue!(
             stdout,
-            "{}[{}]",
-            termion::cursor::Goto(pos.0, pos.1),
+            cursor::MoveTo(pos.0, pos.1),
             self.get_title(),
         )
         .expect("Could not clear screen");
@@ -174,24 +187,22 @@ impl List {
                     offset -= 1;
                     continue;
                 }
-                write!(
+                queue!(
                     stdout,
-                    "{}{}{}",
-                    termion::cursor::Goto(pos.0, pos.1 + idx + 1),
-                    checkbox,
-                    subline.color(color(idx as usize)),
-                )
-                .expect("Could not clear screen");
+                    cursor::MoveTo(pos.0, pos.1 + idx + 1),
+                    Print(checkbox),
+                    PrintStyledContent(subline.with(color(idx as usize))),
+                );
                 idx += 1;
             }
         }
     }
 
-    fn get_title(&self) -> ColoredString {
-        match self.list_type {
+    fn get_title(&self) -> PrintStyledContent<&str> {
+        PrintStyledContent(match self.list_type {
             ListType::Todo => "Todo".green().bold(),
             ListType::Done => "Done".red().bold(),
-        }
+        })
     }
 
     fn get_checkbox(&self) -> String {
@@ -318,10 +329,12 @@ impl List {
         y
     }
 
-    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16), stdout: &mut termion::raw::RawTerminal<io::Stdout>) {
+    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) {
         let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
-        write!(stdout, "{}", termion::cursor::Goto(pos.0, pos.1 + y))
-        .expect("Could not clear screen");
+        queue!(
+            stdout,
+            cursor::MoveTo(pos.0, pos.1 + y)
+        );
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
@@ -345,8 +358,7 @@ impl List {
 
 struct TodoApp {
     running: bool,
-    stdin: termion::input::Keys<termion::AsyncReader>,
-    stdout: termion::raw::RawTerminal<io::Stdout>,
+    stdout: io::Stdout,
     todo: List,
     done: List,
     list_type: ListType,
@@ -359,11 +371,10 @@ struct TodoApp {
 
 impl TodoApp {
     fn new() -> Self {
-        let terminal_size = termion::terminal_size().expect("Could not get terminal size");
+        let terminal_size = terminal::size().expect("Could not get terminal size");
         Self {
             running: true,
-            stdin: termion::async_stdin().keys(),
-            stdout: io::stdout().into_raw_mode().unwrap(),
+            stdout: io::stdout(),
             todo: List::new(load_list(TODO_LIST), ListType::Todo),
             done: List::new(load_list(DONE_LIST), ListType::Done),
             list_type: ListType::Todo,
@@ -383,15 +394,15 @@ impl TodoApp {
         };
         match self.list_type {
             ListType::Todo => self.todo.go_to_current_index(
-                (1, 1),
+                (0, 0),
                 size,
                 &mut self.stdout,
             ),
             ListType::Done => self.done.go_to_current_index(
                 if self.one_pane {
-                    (1, 1)
+                    (0, 0)
                 } else {
-                    (self.terminal_size.0 / 2, 1)
+                    (self.terminal_size.0 / 2, 0)
                 },
                 size,
                 &mut self.stdout,
@@ -415,20 +426,21 @@ impl TodoApp {
                 self.go_to_current_index();
             }
             InputMode::Insert(dest) => {
-                let leader = match dest {
+                let leader = PrintStyledContent(match dest {
                     InputDestination::NewItem => "New item: ".blue().bold(),
                     InputDestination::NewItemBefore => "New item before current: ".magenta().bold(),
-                    InputDestination::NewItemAfter => "New item after current: ".purple().bold(),
+                    InputDestination::NewItemAfter => "New item after current: ".red().bold(),
                     InputDestination::EditItem => "Edit item: ".green().bold(),
-                };
-                write!(
-                    self.stdout,
-                    "{}{}{}",
+                });
+                let input = self.input_string.clone(); // appease borrow checker
+                let idx = self.input_string_index; // appease borrow checker
+                queue!(
+                    &mut self.stdout,
                     leader,
-                    self.input_string,
-                    termion::cursor::Goto(
-                        leader.len() as u16 + self.input_string_index as u16 + 1,
-                        1
+                    Print(input),
+                    cursor::MoveTo(
+                        leader.0.content().len() as u16 + idx as u16,
+                        0
                     ),
                 )
                 .expect("Could not print message");
@@ -437,27 +449,28 @@ impl TodoApp {
         self.stdout.flush().expect("Could not flush");
     }
 
-    fn run(&mut self) {
+    fn run(&mut self) -> crossterm::Result<()> {
         self.redraw();
         while self.running {
-            let size = termion::terminal_size().expect("Could not get terminal size");
+            let size = terminal::size()?;
             if self.terminal_size != size {
                 self.terminal_size = size;
                 self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
                 self.redraw();
             }
-            if self.kbin() {
+            if self.kbin()? {
                 self.redraw();
             }
         }
         save_list(TODO_LIST, &self.todo.items);
         save_list(DONE_LIST, &self.done.items);
         self.clear();
+        Ok(())
     }
 
     fn draw_todo(&mut self) {
         self.todo.draw(
-            (1, 1),
+            (0, 0),
             if self.one_pane {
                 self.terminal_size
             } else {
@@ -470,9 +483,9 @@ impl TodoApp {
     fn draw_done(&mut self) {
         self.done.draw(
             if self.one_pane {
-                (1, 1)
+                (0, 0)
             } else {
-                (self.terminal_size.0 / 2, 1)
+                (self.terminal_size.0 / 2, 0)
             },
             if self.one_pane {
                 self.terminal_size
@@ -484,13 +497,11 @@ impl TodoApp {
     }
 
     fn clear(&mut self) {
-        write!(
+        queue!(
             self.stdout,
-            "{}{}",
-            termion::clear::All,
-            termion::cursor::Goto(1, 1),
-        )
-        .expect("Could not clear screen");
+            terminal::Clear(terminal::ClearType::All),
+            cursor::MoveTo(0, 0),
+        );
     }
 
     fn swap_list(&mut self) {
@@ -514,96 +525,94 @@ impl TodoApp {
     }
 
     /// handle keyboard input
-    /// returns true if redraw needs to be called again, otherwise returns false
-    fn kbin(&mut self) -> bool {
-        if let Some(Ok(key)) = self.stdin.next() {
+    /// returns Ok(true) if redraw needs to be called again, otherwise returns Ok(false)
+    fn kbin(&mut self) -> crossterm::Result<bool> {
+        if event::poll(Duration::from_millis(50))? {
+            let evnt = event::read()?;
             let list = get_list!(self, mut self.list_type);
             match self.input_mode {
-                InputMode::Normal => match (key, self.list_type) {
-                    (Key::Char('q') | Key::Esc, _) => self.running = false,
-                    (Key::Char('d') | Key::Char('x') | Key::Char('\n'), ListType::Todo) => self.check_item(),
-                    (Key::Char('x') | Key::Char('\n'), ListType::Done) => self.uncheck_item(),
-                    (Key::Char('d') | Key::Backspace, ListType::Done) => self.delete_item(),
-                    (Key::Char('O'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
-                    (Key::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
-                    (Key::Char(ch), _) => match ch {
-                        'e' => {
-                            self.input_mode = InputMode::Insert(InputDestination::EditItem);
-                            if let Some(item) = list.take_current() {
-                                self.input_string_index = item.len();
-                                self.input_string = item;
+                InputMode::Normal => match evnt {
+                    Event::Resize(w, h) => self.terminal_size = (w, h),
+                    Event::Key(key_event) => match (key_event.code, self.list_type) {
+                        (KeyCode::Char('q') | KeyCode::Esc, _) => self.running = false,
+                        (KeyCode::Char('d') | KeyCode::Char('x') | KeyCode::Enter, ListType::Todo) => self.check_item(),
+                        (KeyCode::Char('x') | KeyCode::Enter, ListType::Done) => self.uncheck_item(),
+                        (KeyCode::Char('d') | KeyCode::Backspace, ListType::Done) => self.delete_item(),
+                        (KeyCode::Char('O'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
+                        (KeyCode::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
+                        (KeyCode::Char(ch), _) => match ch {
+                            'e' => {
+                                self.input_mode = InputMode::Insert(InputDestination::EditItem);
+                                if let Some(item) = list.take_current() {
+                                    self.input_string_index = item.len();
+                                    self.input_string = item;
+                                }
                             }
+                            'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
+                            'h' | 'l' => self.swap_list(),
+                            'j' => list.move_down(),
+                            'J' => list.shift_down(),
+                            'k' => list.move_up(),
+                            'K' => list.shift_up(),
+                            'g' => list.move_to_top(),
+                            'G' => list.move_to_bottom(),
+                            _ => return Ok(false),
                         }
-                        'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
-                        'h' | 'l' => self.swap_list(),
-                        'j' => list.move_down(),
-                        'J' => list.shift_down(),
-                        'k' => list.move_up(),
-                        'K' => list.shift_up(),
-                        'g' => list.move_to_top(),
-                        'G' => list.move_to_bottom(),
-                        _ => return false,
+                        _ => return Ok(false),
                     }
-                    _ => return false,
-                }
-                InputMode::Insert(dest) => match key {
-                    Key::Esc => {
-                        if let (Some(Ok(Key::Char(brack))), Some(Ok(Key::Char(letter)))) = (self.stdin.next(), self.stdin.next()) {
-                            match (brack, letter) {
-                                ('[', 'D') => { // left
-                                    if self.input_string_index >= 1 {
-                                        self.input_string_index -= 1;
-                                    }
-                                },
-                                ('[', 'C') => { // right
-                                    let len = self.input_string.len();
-                                    self.input_string_index += 1;
-                                    if self.input_string_index > len {
-                                        self.input_string_index = len;
-                                    }
-                                },
-                                ('[', _) => (),
-                                _ => panic!("Unexpected key sequence"),
-                            }
-                            return true;
-                        }
-                        self.input_mode = InputMode::Normal;
-                        self.input_string = "".to_string();
-                        self.input_string_index = 0;
-                    }
-                    Key::Backspace => {
-                        if self.input_string_index >= 1 {
-                            self.input_string_index -= 1;
-                        }
-                        self.input_string.remove(self.input_string_index);
-                    }
-                    Key::Char('\n') => {
-                        self.input_mode = InputMode::Normal;
-                        self.input_string_index = 0;
-                        let s = std::mem::take(&mut self.input_string);
-                        match dest {
-                            InputDestination::NewItem => self.todo.add(s),
-                            InputDestination::NewItemBefore => {
-                                self.todo.insert_before(s);
-                            }
-                            InputDestination::NewItemAfter => {
-                                self.todo.insert_after(s);
-                            }
-                            InputDestination::EditItem => list.set_current(s),
-                        }
-                    }
-                    Key::Char(ch) => {
-                        self.input_string.insert(self.input_string_index, ch);
-                        self.input_string_index += 1;
-                    }
-                    _ => return false,
+                    _ => return Ok(false),
                 },
+                InputMode::Insert(dest) => match evnt {
+                    Event::Key(key_event) => match key_event.code {
+                        KeyCode::Left => if self.input_string_index >= 1 {
+                            self.input_string_index -= 1;
+                        },
+                        KeyCode::Right => {
+                            let len = self.input_string.len();
+                            self.input_string_index += 1;
+                            if self.input_string_index > len {
+                                self.input_string_index = len;
+                            }
+                        }
+                        KeyCode::Esc => {
+                            self.input_mode = InputMode::Normal;
+                            self.input_string = "".to_string();
+                            self.input_string_index = 0;
+                        }
+                        KeyCode::Backspace => {
+                            if self.input_string_index >= 1 {
+                                self.input_string_index -= 1;
+                            }
+                            self.input_string.remove(self.input_string_index);
+                        }
+                        KeyCode::Enter => {
+                            self.input_mode = InputMode::Normal;
+                            self.input_string_index = 0;
+                            let s = std::mem::take(&mut self.input_string);
+                            match dest {
+                                InputDestination::NewItem => self.todo.add(s),
+                                InputDestination::NewItemBefore => {
+                                    self.todo.insert_before(s);
+                                }
+                                InputDestination::NewItemAfter => {
+                                    self.todo.insert_after(s);
+                                }
+                                InputDestination::EditItem => list.set_current(s),
+                            }
+                        }
+                        KeyCode::Char(ch) => {
+                            self.input_string.insert(self.input_string_index, ch);
+                            self.input_string_index += 1;
+                        }
+                        _ => return Ok(false),
+                    },
+                    _ => return Ok(false),
+                }
             }
-        } else {
-            return false;
         }
-        true
+        Ok(true)
     }
+
 }
 
 /// A program that acts as a todo list
@@ -642,9 +651,9 @@ struct Args {
     print: bool,
 }
 
-fn main() {
+fn main() -> crossterm::Result<()> {
     let args = Args::from_args();
-    termion::terminal_size().unwrap_or_else(|_| {
+    terminal::size().unwrap_or_else(|_| {
         print_todo();
         std::process::exit(0)
     });
@@ -655,6 +664,9 @@ fn main() {
     } else if args.print {
         print_todo();
     } else {
-        TodoApp::new().run();
+        terminal::enable_raw_mode()?;
+        TodoApp::new().run()?;
+        terminal::disable_raw_mode()?;
     }
+    Ok(())
 }
