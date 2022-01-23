@@ -658,35 +658,37 @@ fn main() -> crossterm::Result<()> {
     let args = Args::from_args();
     let stdin_tty = stdin.is_tty();
     let stdout_tty = io::stdout().is_tty();
-    let interactive = args.add.is_none()
+    // interactive
+    if args.add.is_none()
         && !args.add_stdin
         && !args.print
         && !args.print_done
         && stdin_tty
-        && stdout_tty;
-    if args.add.is_some() || args.add_stdin || !stdin_tty {
-        let mut list = load_list(TODO_LIST);
-        let val = if let Some(val) = args.add {
-            val
-        } else {
-            let mut val = "".to_string();
-            stdin.read_to_string(&mut val)?;
-            val.replace('\n', " ")
-        };
-        list.push(val);
-        save_list(TODO_LIST, &list);
-    }
-    if args.print {
-        print_todo();
-    } else if args.print_done {
-        print_done();
-    } else {
-        print_todo();
-    }
-    if interactive {
+        && stdout_tty
+    {
         terminal::enable_raw_mode()?;
         TodoApp::new().run()?;
         terminal::disable_raw_mode()?;
+    } else {
+        if args.add.is_some() || args.add_stdin || !stdin_tty {
+            let mut list = load_list(TODO_LIST);
+            let val = if let Some(val) = args.add {
+                val
+            } else {
+                let mut val = "".to_string();
+                stdin.read_to_string(&mut val)?;
+                val.replace('\n', " ")
+            };
+            list.push(val);
+            save_list(TODO_LIST, &list);
+        }
+        if args.print {
+            print_todo();
+        } else if args.print_done {
+            print_done();
+        } else {
+            print_todo();
+        }
     }
     Ok(())
 }
