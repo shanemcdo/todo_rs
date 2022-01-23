@@ -96,7 +96,7 @@ fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
                 continue 'outer;
             }
         }
-        res.push(s.clone());
+        res.push(std::mem::take(&mut s));
         break;
     }
     res
