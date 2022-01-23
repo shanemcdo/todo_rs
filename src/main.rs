@@ -19,18 +19,18 @@ const TODO_LIST: &str = std::env!("TODO_LIST");
 const DONE_LIST: &str = std::env!("TODO_DONE_LIST");
 const COLORS_LEN: usize = 12;
 const COLORS: [Color; COLORS_LEN] = [
-    Color::Rgb{r: 255, g: 0, b: 0},
+    Color::Rgb{r: 255, g: 0,   b: 0},
     Color::Rgb{r: 255, g: 128, b: 0},
     Color::Rgb{r: 255, g: 255, b: 0},
     Color::Rgb{r: 128, g: 255, b: 0},
-    Color::Rgb{r: 0, g: 255, b: 0},
-    Color::Rgb{r: 0, g: 255, b: 128},
-    Color::Rgb{r: 0, g: 255, b: 255},
-    Color::Rgb{r: 0, g: 128, b: 255},
-    Color::Rgb{r: 0, g: 0, b: 255},
-    Color::Rgb{r: 128, g: 0, b: 255},
-    Color::Rgb{r: 255, g: 0, b: 255},
-    Color::Rgb{r: 255, g: 0, b: 128}
+    Color::Rgb{r: 0,   g: 255, b: 0},
+    Color::Rgb{r: 0,   g: 255, b: 128},
+    Color::Rgb{r: 0,   g: 255, b: 255},
+    Color::Rgb{r: 0,   g: 128, b: 255},
+    Color::Rgb{r: 0,   g: 0,   b: 255},
+    Color::Rgb{r: 128, g: 0,   b: 255},
+    Color::Rgb{r: 255, g: 0,   b: 255},
+    Color::Rgb{r: 255, g: 0,   b: 128}
 ];
 const MAX_WIDTH_SINGLE_PANE: u16 = 55;
 const CHECKBOX_WIDTH: usize = 4;
