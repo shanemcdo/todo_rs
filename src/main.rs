@@ -2,9 +2,10 @@ use std::io::{self, prelude::*, BufRead};
 use structopt::StructOpt;
 use std::time::Duration;
 use crossterm::{
-    terminal,
     queue,
     cursor,
+    terminal,
+    tty::IsTty,
     event::{self, Event, KeyCode},
     style::{
         Color,
@@ -87,6 +88,10 @@ fn print_list(list: &Vec<String>) {
 
 fn print_todo() {
     print_list(&load_list(TODO_LIST));
+}
+
+fn print_done() {
+    print_list(&load_list(DONE_LIST));
 }
 
 fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
@@ -634,24 +639,31 @@ struct Args {
     /// Directly add an item to the todo list
     #[structopt(short, long, default_value = "")]
     add: String,
+
     /// Print list instead of interactive prompt
     #[structopt(short, long)]
     print: bool,
+
+    /// Print done list instead of interactive prompt
+    #[structopt(short="d", long)]
+    print_done: bool,
 }
 
 fn main() -> crossterm::Result<()> {
     let args = Args::from_args();
-    terminal::size().unwrap_or_else(|_| {
-        print_todo();
-        std::process::exit(0)
-    });
     if args.add != "" {
         let mut list = load_list(TODO_LIST);
         list.push(args.add);
         save_list(TODO_LIST, &list);
     } else if args.print {
         print_todo();
+    } else if args.print_done {
+        print_done();
     } else {
+        if !io::stdout().is_tty() {
+            print_todo();
+            std::process::exit(0);
+        }
         terminal::enable_raw_mode()?;
         TodoApp::new().run()?;
         terminal::disable_raw_mode()?;
