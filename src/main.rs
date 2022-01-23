@@ -251,6 +251,7 @@ impl List {
             let item = self.items.remove(0);
             self.items.push(item);
         }
+        self.move_up();
     }
 
     fn shift_down(&mut self) {
@@ -264,6 +265,7 @@ impl List {
             let item = self.items.remove(len - 1);
             self.items.insert(0, item)
         }
+        self.move_down();
     }
 
     fn remove(&mut self) -> Option<String> {
