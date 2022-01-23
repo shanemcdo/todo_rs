@@ -143,17 +143,19 @@ impl List {
         }
     }
 
-    fn draw(&mut self, pos: (u16, u16), size: (u16, u16)) {
+    fn draw(&mut self, pos: (u16, u16), size: (u16, u16), stdout: &mut termion::raw::RawTerminal<io::Stdout>) {
         if self.out_of_bounds(size) {
             self.update_y_offset(size);
         }
         let checkbox = self.get_checkbox();
         let mut offset = self.y_offset as u16;
-        print!(
+        write!(
+            stdout,
             "{}[{}]",
             termion::cursor::Goto(pos.0, pos.1),
             self.get_title(),
-        );
+        )
+        .expect("Could not clear screen");
         let max = size.0 - CHECKBOX_WIDTH as u16;
         let mut idx = 0u16;
         'outer: for line in &self.items {
@@ -172,12 +174,14 @@ impl List {
                     offset -= 1;
                     continue;
                 }
-                print!(
+                write!(
+                    stdout,
                     "{}{}{}",
                     termion::cursor::Goto(pos.0, pos.1 + idx + 1),
                     checkbox,
                     subline.color(color(idx as usize)),
-                );
+                )
+                .expect("Could not clear screen");
                 idx += 1;
             }
         }
@@ -314,9 +318,10 @@ impl List {
         y
     }
 
-    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16)) {
+    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16), stdout: &mut termion::raw::RawTerminal<io::Stdout>) {
         let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
-        print!("{}", termion::cursor::Goto(pos.0, pos.1 + y));
+        write!(stdout, "{}", termion::cursor::Goto(pos.0, pos.1 + y))
+        .expect("Could not clear screen");
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
@@ -370,7 +375,7 @@ impl TodoApp {
         }
     }
 
-    fn go_to_current_index(&self) {
+    fn go_to_current_index(&mut self) {
         let size = if self.one_pane {
             self.terminal_size
         } else {
@@ -380,6 +385,7 @@ impl TodoApp {
             ListType::Todo => self.todo.go_to_current_index(
                 (1, 1),
                 size,
+                &mut self.stdout,
             ),
             ListType::Done => self.done.go_to_current_index(
                 if self.one_pane {
@@ -388,6 +394,7 @@ impl TodoApp {
                     (self.terminal_size.0 / 2, 1)
                 },
                 size,
+                &mut self.stdout,
             ),
         }
     }
@@ -456,6 +463,7 @@ impl TodoApp {
             } else {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
             },
+            &mut self.stdout
         );
     }
 
@@ -471,6 +479,7 @@ impl TodoApp {
             } else {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
             },
+            &mut self.stdout
         );
     }
 
