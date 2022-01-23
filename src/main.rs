@@ -1,16 +1,7 @@
 use colored::*;
+use std::io::{self, prelude::*, BufRead};
 use structopt::StructOpt;
-use std::io::{
-    self,
-    BufRead,
-    prelude::*,
-};
-use termion::{
-    self,
-    input::TermRead,
-    raw::IntoRawMode,
-    event::Key,
-};
+use termion::{self, event::Key, input::TermRead, raw::IntoRawMode};
 
 const TODO_LIST: &str = std::env!("TODO_LIST");
 const DONE_LIST: &str = std::env!("TODO_DONE_LIST");
@@ -33,19 +24,19 @@ const MAX_WIDTH_SINGLE_PANE: u16 = 55;
 const CHECKBOX_WIDTH: usize = 4;
 
 macro_rules! get_list {
-    ($app: expr, $list_type: expr) => (
+    ($app: expr, $list_type: expr) => {
         match $list_type {
             ListType::Todo => &$app.todo,
             ListType::Done => &$app.done,
         }
-    );
+    };
 
-    ($app: expr, mut $list_type: expr) => (
+    ($app: expr, mut $list_type: expr) => {
         match $list_type {
             ListType::Todo => &mut $app.todo,
             ListType::Done => &mut $app.done,
         }
-    );
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -83,7 +74,7 @@ fn print_list(list: &Vec<String>) {
     }
 }
 
-fn print_todo(){
+fn print_todo() {
     print_list(&load_list(TODO_LIST));
 }
 
@@ -93,7 +84,7 @@ fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
     'outer: loop {
         let mut prev_word = 0;
         for (i, ch) in s.chars().enumerate() {
-            if !ch.is_alphanumeric(){
+            if !ch.is_alphanumeric() {
                 prev_word = i;
             }
             if i + 1 >= max_length {
@@ -152,8 +143,8 @@ impl List {
         }
     }
 
-    fn draw(&mut self, pos: (u16, u16), size: (u16, u16)){
-        if self.out_of_bounds(size){
+    fn draw(&mut self, pos: (u16, u16), size: (u16, u16)) {
+        if self.out_of_bounds(size) {
             self.update_y_offset(size);
         }
         let checkbox = self.get_checkbox();
@@ -206,11 +197,11 @@ impl List {
         }
     }
 
-    fn move_to_top(&mut self){
+    fn move_to_top(&mut self) {
         self.current_index = 0;
     }
 
-    fn move_to_bottom(&mut self){
+    fn move_to_bottom(&mut self) {
         let len = self.items.len();
         self.current_index = if len == 0 {
             0
@@ -286,9 +277,9 @@ impl List {
     fn add(&mut self, item: String) {
         self.items.push(item);
     }
-    
+
     fn insert(&mut self, item: String, index: usize) {
-        self.items.insert(index, item); 
+        self.items.insert(index, item);
     }
 
     fn insert_before(&mut self, item: String) {
@@ -322,18 +313,15 @@ impl List {
         }
         y
     }
-    
+
     fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16)) {
         let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
-        print!(
-            "{}",
-            termion::cursor::Goto(pos.0, pos.1 + y),
-        );
+        print!("{}", termion::cursor::Goto(pos.0, pos.1 + y));
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
         let y = self.get_y_pos(size);
-        self.y_offset = if y  > self.y_offset {
+        self.y_offset = if y > self.y_offset {
             (y + 1).checked_sub(size.1 as usize).unwrap_or(0)
         } else {
             y - 1
@@ -364,9 +352,9 @@ struct TodoApp {
     one_pane: bool,
 }
 
-impl TodoApp{
-    fn new() -> Self{
-        let terminal_size = termion::terminal_size().expect("Could not get terminal size"); 
+impl TodoApp {
+    fn new() -> Self {
+        let terminal_size = termion::terminal_size().expect("Could not get terminal size");
         Self {
             running: true,
             stdin: termion::async_stdin().keys(),
@@ -382,7 +370,7 @@ impl TodoApp{
         }
     }
 
-    fn go_to_current_index(&self){
+    fn go_to_current_index(&self) {
         let size = if self.one_pane {
             self.terminal_size
         } else {
@@ -404,7 +392,7 @@ impl TodoApp{
         }
     }
 
-    fn redraw(&mut self){
+    fn redraw(&mut self) {
         self.clear();
         match self.input_mode {
             InputMode::Normal => {
@@ -431,8 +419,12 @@ impl TodoApp{
                     "{}{}{}",
                     leader,
                     self.input_string,
-                    termion::cursor::Goto(leader.len() as u16 + self.input_string_index as u16 + 1, 1),
-                ).expect("Could not print message");
+                    termion::cursor::Goto(
+                        leader.len() as u16 + self.input_string_index as u16 + 1,
+                        1
+                    ),
+                )
+                .expect("Could not print message");
             }
         }
         self.stdout.flush().expect("Could not flush");
@@ -456,18 +448,18 @@ impl TodoApp{
         self.clear();
     }
 
-    fn draw_todo(&mut self){
+    fn draw_todo(&mut self) {
         self.todo.draw(
             (1, 1),
             if self.one_pane {
                 self.terminal_size
             } else {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
-            }
+            },
         );
     }
 
-    fn draw_done(&mut self){
+    fn draw_done(&mut self) {
         self.done.draw(
             if self.one_pane {
                 (1, 1)
@@ -478,7 +470,7 @@ impl TodoApp{
                 self.terminal_size
             } else {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
-            }
+            },
         );
     }
 
@@ -489,26 +481,26 @@ impl TodoApp{
             termion::clear::All,
             termion::cursor::Goto(1, 1),
         )
-            .expect("Could not clear screen");
+        .expect("Could not clear screen");
     }
 
-    fn swap_list(&mut self){
+    fn swap_list(&mut self) {
         self.list_type = self.list_type.next();
     }
 
-    fn check_item(&mut self){
+    fn check_item(&mut self) {
         if let Some(item) = self.todo.remove() {
             self.done.add(item);
         }
     }
 
-    fn uncheck_item(&mut self){
+    fn uncheck_item(&mut self) {
         if let Some(item) = self.done.remove() {
             self.todo.add(item);
         }
     }
 
-    fn delete_item(&mut self){
+    fn delete_item(&mut self) {
         self.done.remove();
     }
 
@@ -532,7 +524,7 @@ impl TodoApp{
                                 self.input_string_index = item.len();
                                 self.input_string = item;
                             }
-                        },
+                        }
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
                         'j' => list.move_down(),
@@ -575,7 +567,7 @@ impl TodoApp{
                             self.input_string_index -= 1;
                         }
                         self.input_string.remove(self.input_string_index);
-                    },
+                    }
                     Key::Char('\n') => {
                         self.input_mode = InputMode::Normal;
                         self.input_string_index = 0;
@@ -590,20 +582,19 @@ impl TodoApp{
                             }
                             InputDestination::EditItem => list.set_current(s),
                         }
-                    },
+                    }
                     Key::Char(ch) => {
                         self.input_string.insert(self.input_string_index, ch);
                         self.input_string_index += 1;
                     }
                     _ => return false,
-                }
+                },
             }
         } else {
             return false;
         }
         true
     }
-
 }
 
 /// A program that acts as a todo list
@@ -632,7 +623,7 @@ impl TodoApp{
             Enter        ->  Add writen todo to list
             Backspace    ->  Remove a character from the label
             other keys   ->  write label for todo"#
-    )]
+)]
 struct Args {
     /// Directly add an item to the todo list
     #[structopt(short, long, default_value = "")]
@@ -644,7 +635,7 @@ struct Args {
 
 fn main() {
     let args = Args::from_args();
-    termion::terminal_size().unwrap_or_else(|_|{
+    termion::terminal_size().unwrap_or_else(|_| {
         print_todo();
         std::process::exit(0)
     });
