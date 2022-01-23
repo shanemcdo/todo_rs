@@ -672,21 +672,22 @@ fn main() -> crossterm::Result<()> {
     } else {
         if args.add.is_some() || args.add_stdin || !stdin_tty {
             let mut list = load_list(TODO_LIST);
-            let val = if let Some(val) = args.add {
-                val
+            if let Some(val) = args.add {
+                list.push(val);
             } else {
                 let mut val = "".to_string();
                 stdin.read_to_string(&mut val)?;
-                val.replace('\n', " ")
+                for line in val.split('\n').filter(|x| x.len() > 0) {
+                    list.push(line.to_string());
+                }
             };
-            list.push(val);
             save_list(TODO_LIST, &list);
         }
         if args.print {
             print_todo();
         } else if args.print_done {
             print_done();
-        } else {
+        } else if !stdout_tty {
             print_todo();
         }
     }
