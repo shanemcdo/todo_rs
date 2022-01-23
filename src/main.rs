@@ -139,7 +139,6 @@ struct List {
     items: Vec<String>,
     list_type: ListType,
     current_index: usize,
-    prev_y_offset: usize,
     y_offset: usize,
 }
 
@@ -149,13 +148,14 @@ impl List {
             items,
             list_type,
             current_index: 0,
-            prev_y_offset: 0,
             y_offset: 0,
         }
     }
 
     fn draw(&mut self, pos: (u16, u16), size: (u16, u16)){
-        self.update_y_offset(size);
+        if self.out_of_bounds(size){
+            self.update_y_offset(size);
+        }
         let title = self.get_title();
         let checkbox = self.get_checkbox();
         let mut offset = self.y_offset as u16;
@@ -336,10 +336,21 @@ impl List {
             let l = word_wrap(&line, max as usize).len();
             total += l;
         }
-        self.prev_y_offset = self.y_offset;
         self.y_offset = total.checked_sub(size.1 as usize).unwrap_or(0)
     }
 
+    fn out_of_bounds(&mut self, size: (u16, u16)) -> bool {
+        let max = size.0 as usize - CHECKBOX_WIDTH;
+        let mut cursor_y = 1;
+        for i in 0..self.current_index {
+            cursor_y += word_wrap(&self.items[i], max).len();
+        }
+        if cursor_y > size.1 as usize + self.y_offset || cursor_y < self.y_offset {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 struct TodoApp {
