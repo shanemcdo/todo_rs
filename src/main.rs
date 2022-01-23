@@ -637,8 +637,12 @@ impl TodoApp {
 )]
 struct Args {
     /// Directly add an item to the todo list
-    #[structopt(short, long, default_value = "")]
-    add: String,
+    #[structopt(short, long)]
+    add: Option<String>,
+
+    /// Directly add an item read from stdin into the todo list
+    #[structopt(short="s", long)]
+    add_stdin: bool,
 
     /// Print list instead of interactive prompt
     #[structopt(short, long)]
@@ -650,20 +654,36 @@ struct Args {
 }
 
 fn main() -> crossterm::Result<()> {
+    let mut stdin = io::stdin();
     let args = Args::from_args();
-    if args.add != "" {
+    let stdin_tty = stdin.is_tty();
+    let stdout_tty = io::stdout().is_tty();
+    let interactive = args.add.is_none()
+        && !args.add_stdin
+        && !args.print
+        && !args.print_done
+        && stdin_tty
+        && stdout_tty;
+    if let Some(val) = args.add {
         let mut list = load_list(TODO_LIST);
-        list.push(args.add);
+        list.push(val);
         save_list(TODO_LIST, &list);
-    } else if args.print {
+    } else if args.add_stdin || !stdin_tty {
+        let mut list = load_list(TODO_LIST);
+        let mut val = "".to_string();
+        stdin.read_to_string(&mut val)?;
+        val = val.replace('\n', " ");
+        list.push(val);
+        save_list(TODO_LIST, &list);
+    } 
+    if args.print {
         print_todo();
     } else if args.print_done {
         print_done();
     } else {
-        if !io::stdout().is_tty() {
-            print_todo();
-            std::process::exit(0);
-        }
+        print_todo();
+    }
+    if interactive {
         terminal::enable_raw_mode()?;
         TodoApp::new().run()?;
         terminal::disable_raw_mode()?;
