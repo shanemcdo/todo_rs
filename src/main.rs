@@ -154,7 +154,8 @@ impl List {
         }
     }
 
-    fn draw(&mut self, pos: (u16, u16), bounds: (u16, u16)){
+    fn draw(&mut self, pos: (u16, u16), size: (u16, u16)){
+        self.update_y_offset(size);
         let title = self.get_title();
         let checkbox = self.get_checkbox();
         let mut offset = self.y_offset as u16;
@@ -163,7 +164,7 @@ impl List {
             termion::cursor::Goto(pos.0, pos.1),
             title,
         );
-        let max = bounds.0 - CHECKBOX_WIDTH as u16;
+        let max = size.0 - CHECKBOX_WIDTH as u16;
         let mut idx = 0u16;
         'outer: for line in &self.items {
             let mut first = true;
@@ -174,7 +175,7 @@ impl List {
                 } else {
                     "    "
                 };
-                if idx + 2 > bounds.1 { // offscreen
+                if idx + 2 > size.1 { // offscreen
                     break 'outer;
                 }
                 if idx < offset {
@@ -300,6 +301,37 @@ impl List {
     fn set_current(&mut self, item: String) {
         self.items[self.current_index] = item;
     }
+    
+    fn go_to_current_index(&mut self, pos: (u16, u16), size: (u16, u16)) {
+        let max = size.0 as usize - CHECKBOX_WIDTH;
+        // the logic is the position of the current index is the sum
+        // is the sum of all the lines before the current line
+        // plus 1 again for the title offset
+        let mut y = 1;
+        for i in 0..self.current_index {
+            y += word_wrap(&self.items[i], max).len();
+        }
+        let y = y.checked_sub(self.y_offset).unwrap_or(1) as u16;
+        print!(
+            "{}",
+            termion::cursor::Goto(pos.0, pos.0 + y),
+        );
+    }
+
+    fn update_y_offset(&mut self, size: (u16, u16)) {
+        let max = size.0 - CHECKBOX_WIDTH as u16;
+        let mut total = 1usize;
+        for (i, line) in (&self.items).into_iter().enumerate() {
+            if i > self.current_index {
+                break;
+            }
+            let l = word_wrap(&line, max as usize).len();
+            total += l;
+        }
+        self.prev_y_offset = self.y_offset;
+        self.y_offset = total.checked_sub(size.1 as usize).unwrap_or(0)
+    }
+
 }
 
 struct TodoApp {
@@ -334,22 +366,27 @@ impl TodoApp{
         }
     }
 
-    // fn go_to_current_index(&mut self){
-    //     let max = self.get_max_word_wrap_length();
-    //     let list = get_list!(self, self.list_type);
-    //     let offset = self.get_y_offset(self.list_type);
-    //     // the logic is the position of the current index is the sum
-    //     // is the sum of all the lines before the current line plus 1
-    //     // plus 1 again for the title offset
-    //     let mut pos = 2;
-    //     for i in 0..self.current_index {
-    //         pos += word_wrap(&list[i as usize], max).len();
-    //     }
-    //     let x = self.get_x_pos(self.list_type);
-    //     let pos = (pos as u16).checked_sub(offset).unwrap_or(2);
-    //     write!(self.stdout, "{}", termion::cursor::Goto(x, pos))
-    //         .expect("Could not move cursor");
-    // }
+    fn go_to_current_index(&mut self){
+        let size = if self.one_pane {
+            self.terminal_size
+        } else {
+            (self.terminal_size.0 / 2, self.terminal_size.1)
+        };
+        match self.list_type {
+            ListType::Todo => self.todo.go_to_current_index(
+                (1, 1),
+                size,
+            ),
+            ListType::Done => self.done.go_to_current_index(
+                if self.one_pane {
+                    (1, 1)
+                } else {
+                    (self.terminal_size.0 / 2, 1)
+                },
+                size,
+            ),
+        }
+    }
 
     fn redraw(&mut self){
         self.clear();
@@ -364,7 +401,7 @@ impl TodoApp{
                     self.draw_todo();
                     self.draw_done();
                 }
-                // self.go_to_current_index();
+                self.go_to_current_index();
             }
             InputMode::Insert(dest) => {
                 let leader = match dest {
@@ -419,7 +456,7 @@ impl TodoApp{
             if self.one_pane {
                 (1, 1)
             } else {
-                (self.terminal_size.0 / 2 + 1, 1)
+                (self.terminal_size.0 / 2, 1)
             },
             if self.one_pane {
                 self.terminal_size
@@ -439,41 +476,12 @@ impl TodoApp{
             .expect("Could not clear screen");
     }
 
-    // fn get_y_offset(&self, list_type: ListType) -> u16 {
-    //     let list = get_list!(self, list_type);
-    //     let max = self.get_max_word_wrap_length();
-    //     let mut total = 1u16;
-    //     for (i, line) in list.into_iter().enumerate() {
-    //         if i > self.current_index as usize {
-    //             break;
-    //         }
-    //         let l = word_wrap(&line, max).len() as u16;
-    //         total += l;
-    //     }
-    //     total.checked_sub(self.terminal_size.1).unwrap_or(0)
-    // }
-
-    // fn get_x_pos(&self, list_type: ListType) -> u16 {
-    //     match list_type {
-    //         ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
-    //         _ => 1, // if self.one_pane or ListType::Todo
-    //     }
-    // }
-
-    // fn get_list_len(&self, list_type: ListType) -> u16{
-    //     match list_type {
-    //         ListType::Todo => self.todo.len() as u16,
-    //         ListType::Done => self.done.len() as u16,
-    //     }
-    // }
-
-    // fn get_max_word_wrap_length(&self) -> usize{
-    //     if self.one_pane {
-    //         self.terminal_size.0 as usize - CHECKBOX_WIDTH
-    //     } else {
-    //         self.terminal_size.0 as usize / 2 - CHECKBOX_WIDTH
-    //      }
-    // }
+    fn get_x_pos(&self, list_type: ListType) -> u16 {
+        match list_type {
+            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
+            _ => 1, // if self.one_pane or ListType::Todo
+        }
+    }
 
     fn swap_list(&mut self){
         self.list_type = self.list_type.next();
@@ -494,44 +502,6 @@ impl TodoApp{
     fn delete_item(&mut self){
         self.done.remove();
     }
-
-    // fn shift_up(&mut self){
-    //     let list = match self.list_type {
-    //         ListType::Todo => &mut self.todo,
-    //         ListType::Done => &mut self.done,
-    //     };
-    //     let len = list.len();
-    //     if len <= 0 {
-    //         return;
-    //     }
-    //     let idx = self.current_index as usize;
-    //     if idx > 0 {
-    //         list.swap(idx, idx - 1);
-    //     } else {
-    //         let item = list.remove(0);
-    //         list.push(item);
-    //     }
-    //     self.move_up();
-    // }
-
-    // fn shift_down(&mut self){
-    //     let list = match self.list_type {
-    //         ListType::Todo => &mut self.todo,
-    //         ListType::Done => &mut self.done,
-    //     };
-    //     let len = list.len();
-    //     if len <= 0 {
-    //         return;
-    //     }
-    //     let idx = self.current_index as usize;
-    //     if idx + 1 < len {
-    //         list.swap(idx, idx + 1);
-    //     } else {
-    //         let item = list.remove(len - 1);
-    //         list.insert(0, item);
-    //     }
-    //     self.move_down();
-    // }
 
     /// handle keyboard input
     /// returns true if redraw needs to be called again, otherwise returns false
