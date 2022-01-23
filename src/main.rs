@@ -310,17 +310,21 @@ impl List {
             Some(std::mem::take(&mut self.items[self.current_index]))
         }
     }
-    
-    fn go_to_current_index(&mut self, pos: (u16, u16), size: (u16, u16)) {
+
+    fn get_y_pos(&mut self, size: (u16, u16)) -> usize {
         let max = size.0 as usize - CHECKBOX_WIDTH;
+        let mut y = 1; // start at one for title
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line
         // plus 1 for the title offset
-        let mut y = 1;
         for i in 0..self.current_index {
             y += word_wrap(&self.items[i], max).len();
         }
-        let y = y.checked_sub(self.y_offset).unwrap_or(1) as u16;
+        y
+    }
+    
+    fn go_to_current_index(&mut self, pos: (u16, u16), size: (u16, u16)) {
+        let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
         print!(
             "{}",
             termion::cursor::Goto(pos.0, pos.1 + y),
@@ -328,25 +332,12 @@ impl List {
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
-        let max = size.0 - CHECKBOX_WIDTH as u16;
-        let mut total = 1usize;
-        for (i, line) in (&self.items).into_iter().enumerate() {
-            if i > self.current_index {
-                break;
-            }
-            let l = word_wrap(&line, max as usize).len();
-            total += l;
-        }
-        self.y_offset = total.checked_sub(size.1 as usize).unwrap_or(0)
+        self.y_offset = (self.get_y_pos(size) + 1).checked_sub(size.1 as usize).unwrap_or(0)
     }
 
     fn out_of_bounds(&mut self, size: (u16, u16)) -> bool {
-        let max = size.0 as usize - CHECKBOX_WIDTH;
-        let mut cursor_y = 1;
-        for i in 0..self.current_index {
-            cursor_y += word_wrap(&self.items[i], max).len();
-        }
-        if cursor_y > size.1 as usize + self.y_offset || cursor_y < self.y_offset {
+        let y = self.get_y_pos(size);
+        if y + 1 > size.1 as usize + self.y_offset || y <= self.y_offset {
             true
         } else {
             false
