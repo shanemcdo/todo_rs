@@ -131,7 +131,7 @@ fn load_list(filename: &str) -> Vec<String> {
     }
 }
 
-fn colorize(index: usize) -> Color {
+fn color(index: usize) -> Color {
     COLORS[index % COLORS_LEN].clone()
 }
 
@@ -186,7 +186,7 @@ impl List {
                     "{}{}{}",
                     termion::cursor::Goto(pos.0, pos.1 + idx + 1),
                     checkbox,
-                    subline.color(colorize(idx as usize)),
+                    subline.color(color(idx as usize)),
                 );
                 idx += 1;
             }
