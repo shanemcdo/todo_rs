@@ -35,22 +35,6 @@ const COLORS: [Color; COLORS_LEN] = [
 const MAX_WIDTH_SINGLE_PANE: u16 = 55;
 const CHECKBOX_WIDTH: usize = 4;
 
-macro_rules! get_list {
-    ($app: expr, $list_type: expr) => {
-        match $list_type {
-            ListType::Todo => &$app.todo,
-            ListType::Done => &$app.done,
-        }
-    };
-
-    ($app: expr, mut $list_type: expr) => {
-        match $list_type {
-            ListType::Todo => &mut $app.todo,
-            ListType::Done => &mut $app.done,
-        }
-    };
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum ListType {
     Todo,
@@ -519,7 +503,10 @@ impl TodoApp {
     fn kbin(&mut self) -> crossterm::Result<bool> {
         if event::poll(Duration::from_millis(50))? {
             let evnt = event::read()?;
-            let list = get_list!(self, mut self.list_type);
+            let list = match self.list_type {
+                ListType::Todo => &mut self.todo,
+                ListType::Done => &mut self.done,
+            };
             match self.input_mode {
                 InputMode::Normal => match evnt {
                     Event::Resize(w, h) => {
