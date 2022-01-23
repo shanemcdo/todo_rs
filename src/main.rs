@@ -670,11 +670,9 @@ fn main() -> crossterm::Result<()> {
             };
             save_list(TODO_LIST, &list);
         }
-        if args.print {
-            print_todo();
-        } else if args.print_done {
+        if args.print_done {
             print_done();
-        } else if !stdout_tty {
+        } else if args.print || !stdout_tty {
             print_todo();
         }
     }
