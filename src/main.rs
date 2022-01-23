@@ -301,12 +301,20 @@ impl List {
     fn set_current(&mut self, item: String) {
         self.items[self.current_index] = item;
     }
+
+    fn get_current(&mut self) -> Option<String> {
+        if self.items.len() == 0 {
+            None
+        } else {
+            Some(std::mem::take(&mut self.items[self.current_index]))
+        }
+    }
     
     fn go_to_current_index(&mut self, pos: (u16, u16), size: (u16, u16)) {
         let max = size.0 as usize - CHECKBOX_WIDTH;
         // the logic is the position of the current index is the sum
         // is the sum of all the lines before the current line
-        // plus 1 again for the title offset
+        // plus 1 for the title offset
         let mut y = 1;
         for i in 0..self.current_index {
             y += word_wrap(&self.items[i], max).len();
@@ -518,10 +526,11 @@ impl TodoApp{
                     (Key::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                     (Key::Char(ch), _) => match ch {
                         'e' => {
-                            // self.input_mode = InputMode::Insert(InputDestination::EditItem);
-                            // let list = get_list!(self, self.list_type);
-                            // self.input_string = list[self.current_index as usize].clone();
-                            // self.input_string_index = self.input_string.len();
+                            self.input_mode = InputMode::Insert(InputDestination::EditItem);
+                            if let Some(item) = list.get_current() {
+                                self.input_string_index = item.len();
+                                self.input_string = item;
+                            }
                         },
                         'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                         'h' | 'l' => self.swap_list(),
