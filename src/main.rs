@@ -82,15 +82,13 @@ fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
     let mut res = vec![];
     let mut s = s.trim().to_string();
     'outer: loop {
-        let mut prev_word = 0;
-        for (i, ch) in s.chars().enumerate() {
-            if !ch.is_alphanumeric() {
-                prev_word = i;
-            }
+        for i in 0..s.len() {
             if i + 1 >= max_length {
-                if prev_word == 0 {
-                    prev_word = i; // if one word is too long u can wrap it
-                }
+                let prev_word = if let Some(val) = s[..i].rfind(char::is_whitespace) {
+                    val // find end of most recent word
+                } else {
+                    i // no whitespace; break word
+                };
                 res.push(s[..prev_word].to_string()); // append to result
                 s = s[prev_word..] // remove part pushed to result
                     .trim()
