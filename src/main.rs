@@ -7,12 +7,9 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode},
     style::{
-        style,
         Color,
         Print,
         Stylize,
-        Attribute,
-        StyledContent,
         PrintStyledContent,
     },
 };
@@ -157,7 +154,7 @@ impl List {
         }
     }
 
-    fn draw(&mut self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) {
+    fn draw(&mut self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) -> crossterm::Result<()> {
         if self.out_of_bounds(size) {
             self.update_y_offset(size);
         }
@@ -167,8 +164,7 @@ impl List {
             stdout,
             cursor::MoveTo(pos.0, pos.1),
             self.get_title(),
-        )
-        .expect("Could not clear screen");
+        )?;
         let max = size.0 - CHECKBOX_WIDTH as u16;
         let mut idx = 0u16;
         'outer: for line in &self.items {
@@ -192,10 +188,11 @@ impl List {
                     cursor::MoveTo(pos.0, pos.1 + idx + 1),
                     Print(checkbox),
                     PrintStyledContent(subline.with(color(idx as usize))),
-                );
+                )?;
                 idx += 1;
             }
         }
+        Ok(())
     }
 
     fn get_title(&self) -> PrintStyledContent<&str> {
@@ -329,12 +326,12 @@ impl List {
         y
     }
 
-    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) {
+    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) -> crossterm::Result<()> {
         let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
         queue!(
             stdout,
             cursor::MoveTo(pos.0, pos.1 + y)
-        );
+        )
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
@@ -386,7 +383,7 @@ impl TodoApp {
         }
     }
 
-    fn go_to_current_index(&mut self) {
+    fn go_to_current_index(&mut self) -> crossterm::Result<()> {
         let size = if self.one_pane {
             self.terminal_size
         } else {
@@ -410,20 +407,20 @@ impl TodoApp {
         }
     }
 
-    fn redraw(&mut self) {
-        self.clear();
+    fn redraw(&mut self) -> crossterm::Result<()> {
+        self.clear()?;
         match self.input_mode {
             InputMode::Normal => {
                 if self.one_pane {
                     match self.list_type {
                         ListType::Todo => self.draw_todo(),
                         ListType::Done => self.draw_done(),
-                    }
+                    }?
                 } else {
-                    self.draw_todo();
-                    self.draw_done();
+                    self.draw_todo()?;
+                    self.draw_done()?;
                 }
-                self.go_to_current_index();
+                self.go_to_current_index()?;
             }
             InputMode::Insert(dest) => {
                 let leader = PrintStyledContent(match dest {
@@ -442,33 +439,25 @@ impl TodoApp {
                         leader.0.content().len() as u16 + idx as u16,
                         0
                     ),
-                )
-                .expect("Could not print message");
+                )?;
             }
         }
-        self.stdout.flush().expect("Could not flush");
+        self.stdout.flush()
     }
 
     fn run(&mut self) -> crossterm::Result<()> {
-        self.redraw();
+        self.redraw()?;
         while self.running {
-            let size = terminal::size()?;
-            if self.terminal_size != size {
-                self.terminal_size = size;
-                self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
-                self.redraw();
-            }
             if self.kbin()? {
-                self.redraw();
+                self.redraw()?;
             }
         }
         save_list(TODO_LIST, &self.todo.items);
         save_list(DONE_LIST, &self.done.items);
-        self.clear();
-        Ok(())
+        self.clear()
     }
 
-    fn draw_todo(&mut self) {
+    fn draw_todo(&mut self) -> crossterm::Result<()> {
         self.todo.draw(
             (0, 0),
             if self.one_pane {
@@ -477,10 +466,10 @@ impl TodoApp {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
             },
             &mut self.stdout
-        );
+        )
     }
 
-    fn draw_done(&mut self) {
+    fn draw_done(&mut self) -> crossterm::Result<()> {
         self.done.draw(
             if self.one_pane {
                 (0, 0)
@@ -493,15 +482,15 @@ impl TodoApp {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
             },
             &mut self.stdout
-        );
+        )
     }
 
-    fn clear(&mut self) {
+    fn clear(&mut self) -> crossterm::Result<()> {
         queue!(
             self.stdout,
             terminal::Clear(terminal::ClearType::All),
             cursor::MoveTo(0, 0),
-        );
+        )
     }
 
     fn swap_list(&mut self) {
@@ -532,7 +521,10 @@ impl TodoApp {
             let list = get_list!(self, mut self.list_type);
             match self.input_mode {
                 InputMode::Normal => match evnt {
-                    Event::Resize(w, h) => self.terminal_size = (w, h),
+                    Event::Resize(w, h) => {
+                        self.terminal_size = (w, h);
+                        self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
+                    }
                     Event::Key(key_event) => match (key_event.code, self.list_type) {
                         (KeyCode::Char('q') | KeyCode::Esc, _) => self.running = false,
                         (KeyCode::Char('d') | KeyCode::Char('x') | KeyCode::Enter, ListType::Todo) => self.check_item(),
