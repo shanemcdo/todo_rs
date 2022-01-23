@@ -55,7 +55,7 @@ enum ListType {
 }
 
 impl ListType {
-    fn next(&mut self) -> Self {
+    fn next(&self) -> Self {
         match self {
             ListType::Todo => ListType::Done,
             ListType::Done => ListType::Todo,
@@ -303,7 +303,7 @@ impl List {
         self.items[self.current_index] = item;
     }
 
-    fn get_current(&mut self) -> Option<String> {
+    fn take_current(&mut self) -> Option<String> {
         if self.items.len() == 0 {
             None
         } else {
@@ -311,7 +311,7 @@ impl List {
         }
     }
 
-    fn get_y_pos(&mut self, size: (u16, u16)) -> usize {
+    fn get_y_pos(&self, size: (u16, u16)) -> usize {
         let max = size.0 as usize - CHECKBOX_WIDTH;
         let mut y = 1; // start at one for title
         // the logic is the position of the current index is the sum
@@ -323,7 +323,7 @@ impl List {
         y
     }
     
-    fn go_to_current_index(&mut self, pos: (u16, u16), size: (u16, u16)) {
+    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16)) {
         let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
         print!(
             "{}",
@@ -340,7 +340,7 @@ impl List {
         }
     }
 
-    fn out_of_bounds(&mut self, size: (u16, u16)) -> bool {
+    fn out_of_bounds(&self, size: (u16, u16)) -> bool {
         let y = self.get_y_pos(size);
         if y + 1 > size.1 as usize + self.y_offset || y <= self.y_offset {
             true
@@ -382,7 +382,7 @@ impl TodoApp{
         }
     }
 
-    fn go_to_current_index(&mut self){
+    fn go_to_current_index(&self){
         let size = if self.one_pane {
             self.terminal_size
         } else {
@@ -528,7 +528,7 @@ impl TodoApp{
                     (Key::Char(ch), _) => match ch {
                         'e' => {
                             self.input_mode = InputMode::Insert(InputDestination::EditItem);
-                            if let Some(item) = list.get_current() {
+                            if let Some(item) = list.take_current() {
                                 self.input_string_index = item.len();
                                 self.input_string = item;
                             }
