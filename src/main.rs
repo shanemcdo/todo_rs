@@ -335,11 +335,7 @@ impl List {
 
     fn out_of_bounds(&self, size: (u16, u16)) -> bool {
         let y = self.get_y_pos(size);
-        if y + 1 > size.1 as usize + self.y_offset || y <= self.y_offset {
-            true
-        } else {
-            false
-        }
+        y + 1 > size.1 as usize + self.y_offset || y <= self.y_offset
     }
 }
 
