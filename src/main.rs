@@ -105,7 +105,7 @@ fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
 fn save_list(filename: &str, list: &Vec<String>) {
     let mut file = std::fs::File::create(filename).expect("Could not create file");
     for line in list {
-        write!(file, "{}\n", line).expect("Could not write to file");
+        writeln!(file, "{}", line).expect("Could not write to file");
     }
 }
 
