@@ -492,13 +492,6 @@ impl TodoApp{
             .expect("Could not clear screen");
     }
 
-    fn get_x_pos(&self, list_type: ListType) -> u16 {
-        match list_type {
-            ListType::Done if !self.one_pane => self.terminal_size.0 / 2,
-            _ => 1, // if self.one_pane or ListType::Todo
-        }
-    }
-
     fn swap_list(&mut self){
         self.list_type = self.list_type.next();
     }
@@ -523,7 +516,7 @@ impl TodoApp{
     /// returns true if redraw needs to be called again, otherwise returns false
     fn kbin(&mut self) -> bool {
         if let Some(Ok(key)) = self.stdin.next() {
-            let mut list = get_list!(self, mut self.list_type);
+            let list = get_list!(self, mut self.list_type);
             match self.input_mode {
                 InputMode::Normal => match (key, self.list_type) {
                     (Key::Char('q') | Key::Esc, _) => self.running = false,
