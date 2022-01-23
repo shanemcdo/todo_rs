@@ -664,18 +664,18 @@ fn main() -> crossterm::Result<()> {
         && !args.print_done
         && stdin_tty
         && stdout_tty;
-    if let Some(val) = args.add {
+    if args.add.is_some() || args.add_stdin || !stdin_tty {
         let mut list = load_list(TODO_LIST);
+        let val = if let Some(val) = args.add {
+            val
+        } else {
+            let mut val = "".to_string();
+            stdin.read_to_string(&mut val)?;
+            val.replace('\n', " ")
+        };
         list.push(val);
         save_list(TODO_LIST, &list);
-    } else if args.add_stdin || !stdin_tty {
-        let mut list = load_list(TODO_LIST);
-        let mut val = "".to_string();
-        stdin.read_to_string(&mut val)?;
-        val = val.replace('\n', " ");
-        list.push(val);
-        save_list(TODO_LIST, &list);
-    } 
+    }
     if args.print {
         print_todo();
     } else if args.print_done {
