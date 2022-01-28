@@ -121,7 +121,7 @@ fn load_list(filename: &str) -> Vec<String> {
 }
 
 fn color(index: usize) -> Color {
-    COLORS[index % COLORS_LEN].clone()
+    COLORS[index % COLORS_LEN]
 }
 
 struct List {
