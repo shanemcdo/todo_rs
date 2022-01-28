@@ -262,7 +262,7 @@ impl List {
     }
 
     fn remove(&mut self) -> Option<String> {
-        if self.items.len() < 1 {
+        if self.items.is_empty() {
             None
         } else {
             let res = Some(self.items.remove(self.current_index));
@@ -297,7 +297,7 @@ impl List {
     }
 
     fn clone_current(&mut self) -> Option<String> {
-        if self.items.len() == 0 {
+        if self.items.is_empty() {
             None
         } else {
             Some(self.items[self.current_index].clone())
