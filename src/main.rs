@@ -156,7 +156,7 @@ impl List {
         let mut idx = 0u16;
         'outer: for line in &self.items {
             let mut first = true;
-            for subline in word_wrap(&line, max as usize) {
+            for subline in word_wrap(line, max as usize) {
                 let checkbox = if first {
                     first = false;
                     &checkbox
