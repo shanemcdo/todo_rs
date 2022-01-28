@@ -235,8 +235,7 @@ impl List {
     }
 
     fn shift_up(&mut self) {
-        let len = self.items.len();
-        if len <= 0 {
+        if self.items.is_empty() {
             return;
         }
         if self.current_index > 0 {
@@ -250,7 +249,7 @@ impl List {
 
     fn shift_down(&mut self) {
         let len = self.items.len();
-        if len <= 0 {
+        if len == 0 {
             return;
         }
         if self.current_index + 1 < len {
