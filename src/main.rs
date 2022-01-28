@@ -64,7 +64,7 @@ enum InputMode {
     Insert(InputDestination),
 }
 
-fn print_list(list: &Vec<String>) {
+fn print_list(list: &[String]) {
     for line in list {
         println!("{}", line);
     }
@@ -102,7 +102,7 @@ fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
     res
 }
 
-fn save_list(filename: &str, list: &Vec<String>) {
+fn save_list(filename: &str, list: &[String]) {
     let mut file = std::fs::File::create(filename).expect("Could not create file");
     for line in list {
         writeln!(file, "{}", line).expect("Could not write to file");
