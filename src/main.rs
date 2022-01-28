@@ -96,7 +96,7 @@ fn word_wrap(s: &str, max_length: usize) -> Vec<String> {
                 continue 'outer;
             }
         }
-        res.push(std::mem::take(&mut s));
+        res.push(s);
         break;
     }
     res
@@ -297,11 +297,11 @@ impl List {
         self.items[self.current_index] = item;
     }
 
-    fn take_current(&mut self) -> Option<String> {
+    fn clone_current(&mut self) -> Option<String> {
         if self.items.len() == 0 {
             None
         } else {
-            Some(std::mem::take(&mut self.items[self.current_index]))
+            Some(self.items[self.current_index].clone())
         }
     }
 
@@ -525,7 +525,7 @@ impl TodoApp {
                         (KeyCode::Char(ch), _) => match ch {
                             'e' => {
                                 self.input_mode = InputMode::Insert(InputDestination::EditItem);
-                                if let Some(item) = list.take_current() {
+                                if let Some(item) = list.clone_current() {
                                     self.input_string_index = item.len();
                                     self.input_string = item;
                                 }
