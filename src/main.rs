@@ -665,7 +665,7 @@ fn main() -> crossterm::Result<()> {
             } else {
                 let mut val = "".to_string();
                 stdin.read_to_string(&mut val)?;
-                for line in val.split('\n').filter(|x| x.len() > 0) {
+                for line in val.split('\n').filter(|x| !x.is_empty()) {
                     list.push(line.trim().to_string());
                 }
             };
