@@ -327,7 +327,7 @@ impl List {
     fn update_y_offset(&mut self, size: (u16, u16)) {
         let y = self.get_y_pos(size);
         self.y_offset = if y > self.y_offset {
-            (y + 1).checked_sub(size.1 as usize).unwrap_or(0)
+            (y + 1).saturating_sub(size.1 as usize)
         } else {
             y - 1
         }
