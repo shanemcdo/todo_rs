@@ -561,10 +561,12 @@ impl TodoApp {
                             self.input_string_index = 0;
                         }
                         KeyCode::Backspace => {
-                            if self.input_string_index >= 1 {
-                                self.input_string_index -= 1;
+                            if self.input_string.len() > 0 {
+                                if self.input_string_index >= 1 {
+                                    self.input_string_index -= 1;
+                                }
+                                self.input_string.remove(self.input_string_index);
                             }
-                            self.input_string.remove(self.input_string_index);
                         }
                         KeyCode::Enter => {
                             self.input_mode = InputMode::Normal;
