@@ -289,7 +289,11 @@ impl List {
     }
 
     fn insert_after(&mut self, item: String) {
-        self.insert(item, self.current_index + 1);
+        let mut index = self.current_index + 1;
+        if index > self.items.len() {
+            index = self.current_index;
+        }
+        self.insert(item, index);
     }
 
     fn set_current(&mut self, item: String) {
