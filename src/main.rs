@@ -141,7 +141,12 @@ impl List {
         }
     }
 
-    fn draw(&mut self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) -> crossterm::Result<()> {
+    fn draw(
+        &mut self,
+        pos: (u16, u16),
+        size: (u16, u16),
+        stdout: &mut io::Stdout,
+    ) -> crossterm::Result<()> {
         if self.out_of_bounds(size) {
             self.update_y_offset(size);
         }
@@ -320,12 +325,14 @@ impl List {
         y
     }
 
-    fn go_to_current_index(&self, pos: (u16, u16), size: (u16, u16), stdout: &mut io::Stdout) -> crossterm::Result<()> {
+    fn go_to_current_index(
+        &self,
+        pos: (u16, u16),
+        size: (u16, u16),
+        stdout: &mut io::Stdout,
+    ) -> crossterm::Result<()> {
         let y = self.get_y_pos(size).checked_sub(self.y_offset).unwrap_or(1) as u16;
-        queue!(
-            stdout,
-            cursor::MoveTo(pos.0, pos.1 + y)
-        )
+        queue!(stdout, cursor::MoveTo(pos.0, pos.1 + y))
     }
 
     fn update_y_offset(&mut self, size: (u16, u16)) {
@@ -461,7 +468,7 @@ impl TodoApp {
             } else {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
             },
-            &mut self.stdout
+            &mut self.stdout,
         )
     }
 
@@ -477,7 +484,7 @@ impl TodoApp {
             } else {
                 (self.terminal_size.0 / 2, self.terminal_size.1)
             },
-            &mut self.stdout
+            &mut self.stdout,
         )
     }
 
@@ -651,7 +658,7 @@ struct Args {
     add: Option<String>,
 
     /// Directly add an item read from stdin into the todo list
-    #[structopt(short="s", long)]
+    #[structopt(short = "s", long)]
     add_stdin: bool,
 
     /// Print list instead of interactive prompt
@@ -659,7 +666,7 @@ struct Args {
     print: bool,
 
     /// Print done list instead of interactive prompt
-    #[structopt(short="d", long)]
+    #[structopt(short = "d", long)]
     print_done: bool,
 }
 
