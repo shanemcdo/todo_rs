@@ -539,10 +539,14 @@ impl TodoApp {
                         (KeyCode::Char('O'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
                         (KeyCode::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                         (KeyCode::Char(ch), _) => match ch {
-                            'e' => {
+                            'e' | 'E' => {
                                 self.input_mode = InputMode::Insert(InputDestination::EditItem);
                                 if let Some(item) = list.clone_current() {
-                                    self.input_string_index = item.len();
+                                    self.input_string_index = if ch == 'E' {
+                                        0
+                                    } else {
+                                        item.len()
+                                    };
                                     self.input_string = item;
                                 }
                             }
@@ -634,6 +638,8 @@ impl TodoApp {
             d, x, Enter  ->  Move item to completed (when hovering todos)
             x, Enter     ->  Move item to todo (when hovering completed)
             d            ->  Delete item from completed
+            e            ->  Edit an item at the end
+            E            ->  Edit an item at the beginning
             a, i         ->  Enter insert mode
             h, l         ->  Move from todo to completed
             g            ->  Move to top of list
