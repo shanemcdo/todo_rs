@@ -341,6 +341,10 @@ impl List {
         let y = self.get_y_pos(size);
         y + 1 > size.1 as usize + self.y_offset || y <= self.y_offset
     }
+
+    fn sort(&mut self) {
+        self.items.sort();
+    }
 }
 
 struct TodoApp {
@@ -541,6 +545,7 @@ impl TodoApp {
                             'K' => list.shift_up(),
                             'g' => list.move_to_top(),
                             'G' => list.move_to_bottom(),
+                            's' => list.sort(),
                             _ => return Ok(false),
                         }
                         _ => return Ok(false),
@@ -623,6 +628,7 @@ impl TodoApp {
             k            ->  Move up on a list
             J            ->  Drag an element down on a list
             K            ->  Drag an element up on a list
+            s            ->  Sort a list
         INSERT MODE:
             Esc          ->  Exit insert mode
             Enter        ->  Add writen todo to list
