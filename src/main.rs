@@ -358,6 +358,7 @@ struct TodoApp {
     input_string_index: usize,
     terminal_size: (u16, u16),
     one_pane: bool,
+    clipboard: String,
 }
 
 impl TodoApp {
@@ -374,6 +375,7 @@ impl TodoApp {
             input_string_index: 0,
             terminal_size,
             one_pane: terminal_size.0 <= MAX_WIDTH_SINGLE_PANE,
+            clipboard: "".to_string(),
         }
     }
 
@@ -546,6 +548,11 @@ impl TodoApp {
                             'g' => list.move_to_top(),
                             'G' => list.move_to_bottom(),
                             's' => list.sort(),
+                            'y' => if let Some(s) = list.clone_current() {
+                                self.clipboard = s;
+                            },
+                            'p' => list.insert_after(self.clipboard.clone()),
+                            'P' => list.insert_before(self.clipboard.clone()),
                             _ => return Ok(false),
                         }
                         _ => return Ok(false),
@@ -629,6 +636,9 @@ impl TodoApp {
             J            ->  Drag an element down on a list
             K            ->  Drag an element up on a list
             s            ->  Sort a list
+            y            ->  Copy an item in the list
+            p            ->  Paste an item in the list after the current item
+            P            ->  Paste an item in the list before the current item
         INSERT MODE:
             Esc          ->  Exit insert mode
             Enter        ->  Add writen todo to list
