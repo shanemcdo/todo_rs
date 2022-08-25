@@ -587,6 +587,9 @@ impl TodoApp {
                             self.input_string = "".to_string();
                             self.input_string_index = 0;
                         }
+                        KeyCode::Delete => if self.input_string.len() > self.input_string_index {
+                            self.input_string.remove(self.input_string_index);
+                        }
                         KeyCode::Backspace => {
                             if !self.input_string.is_empty() {
                                 if self.input_string_index >= 1 {
@@ -656,6 +659,7 @@ impl TodoApp {
             Esc          ->  Exit insert mode
             Enter        ->  Add writen todo to list
             Backspace    ->  Remove a character from the label
+            Delete       ->  Remove a character but do not move cursor back
             other keys   ->  write label for todo"#
 )]
 struct Args {
