@@ -316,7 +316,7 @@ impl List {
     fn get_y_pos(&self, size: (u16, u16)) -> usize {
         let max = self.get_max_line_width(size);
         let mut y = 1; // start at one for title
-        // the logic is the position of the current index is the sum
+        // the logic is the position of the current index
         // is the sum of all the lines before the current line
         // plus 1 for the title offset
         for i in 0..self.current_index {
