@@ -307,6 +307,7 @@ impl List {
             index = self.current_index;
         }
         self.insert(item, index);
+        self.move_down()
     }
 
     fn set_current(&mut self, item: String) {
@@ -598,12 +599,8 @@ impl TodoApp {
                             'y' => if let Some(s) = list.clone_current() {
                                 self.clipboard = s;
                             },
-                            // TODO: repeat prints
-                            'p' => {
-                                list.insert_after(self.clipboard.clone());
-                                list.move_down();
-                            },
-                            'P' => list.insert_before(self.clipboard.clone()),
+                            'p' => repeat! { list.insert_after(self.clipboard.clone()) },
+                            'P' => repeat! { list.insert_before(self.clipboard.clone()) },
                             _ => return Ok(false),
                         }
                         _ => return Ok(false),
