@@ -366,6 +366,7 @@ struct TodoApp {
     terminal_size: (u16, u16),
     one_pane: bool,
     clipboard: String,
+    repitition_modifier: Option<String>,
 }
 
 impl TodoApp {
@@ -383,6 +384,7 @@ impl TodoApp {
             terminal_size,
             one_pane: terminal_size.0 <= MAX_WIDTH_SINGLE_PANE,
             clipboard: "".to_string(),
+            repitition_modifier: None,
         }
     }
 
@@ -519,6 +521,17 @@ impl TodoApp {
     /// handle keyboard input
     /// returns Ok(true) if redraw needs to be called again, otherwise returns Ok(false)
     fn kbin(&mut self) -> crossterm::Result<bool> {
+        macro_rules! repeat {
+            ($stmt:stmt) => (
+                if let Some(number) = self.repitition_modifier.take() {
+                    for _ in 0..number.parse::<i32>().unwrap() {
+                        $stmt
+                    }
+                } else {
+                    $stmt
+                }
+            )
+        }
         if event::poll(Duration::from_millis(50))? {
             let evnt = event::read()?;
             let list = match self.list_type {
@@ -532,13 +545,22 @@ impl TodoApp {
                         self.one_pane = self.terminal_size.0 <= MAX_WIDTH_SINGLE_PANE;
                     }
                     Event::Key(key_event) => match (key_event.code, self.list_type) {
-                        (KeyCode::Char('q') | KeyCode::Esc, _) => self.running = false,
-                        (KeyCode::Char('d') | KeyCode::Char('x') | KeyCode::Enter, ListType::Todo) => self.check_item(),
-                        (KeyCode::Char('x') | KeyCode::Enter, ListType::Done) => self.uncheck_item(),
-                        (KeyCode::Char('d') | KeyCode::Backspace, ListType::Done) => self.delete_item(),
+                        (KeyCode::Char('q') | KeyCode::Esc, _) => if self.repitition_modifier.take() == None {
+                            self.running = false;
+                        },
+                        (KeyCode::Char('d') | KeyCode::Char('x') | KeyCode::Enter, ListType::Todo) => repeat! { self.check_item() },
+                        (KeyCode::Char('x') | KeyCode::Enter, ListType::Done) => repeat! { self.uncheck_item() },
+                        (KeyCode::Char('d') | KeyCode::Backspace, ListType::Done) => repeat! { self.delete_item() },
                         (KeyCode::Char('O'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
                         (KeyCode::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                         (KeyCode::Char(ch), _) => match ch {
+                            '0'..='9' => {
+                                if let Some(string) = &mut self.repitition_modifier {
+                                    string.push(ch);
+                                } else {
+                                    self.repitition_modifier = Some(ch.to_string());
+                                }
+                            }
                             'e' | 'E' => {
                                 self.input_mode = InputMode::Insert(InputDestination::EditItem);
                                 if let Some(item) = list.clone_current() {
@@ -552,13 +574,13 @@ impl TodoApp {
                             }
                             'a' | 'i' => self.input_mode = InputMode::Insert(InputDestination::NewItem),
                             'h' | 'l' => self.swap_list(),
-                            'j' => list.move_down(),
-                            'J' => list.shift_down(),
-                            'k' => list.move_up(),
-                            'K' => list.shift_up(),
-                            'g' => list.move_to_top(),
-                            'G' => list.move_to_bottom(),
-                            's' => list.sort(),
+                            'j' => repeat! { list.move_down() },
+                            'J' => repeat! { list.shift_down() },
+                            'k' => repeat! { list.move_up() },
+                            'K' => repeat! { list.shift_up() },
+                            'g' => repeat! { list.move_to_top() },
+                            'G' => repeat! { list.move_to_bottom() },
+                            's' => repeat! { list.sort() },
                             'y' => if let Some(s) = list.clone_current() {
                                 self.clipboard = s;
                             },
@@ -603,13 +625,9 @@ impl TodoApp {
                             self.input_string_index = 0;
                             let s = std::mem::take(&mut self.input_string);
                             match dest {
-                                InputDestination::NewItem => self.todo.add(s),
-                                InputDestination::NewItemBefore => {
-                                    self.todo.insert_before(s);
-                                }
-                                InputDestination::NewItemAfter => {
-                                    self.todo.insert_after(s);
-                                }
+                                InputDestination::NewItem => repeat! { self.todo.add(s.clone()) },
+                                InputDestination::NewItemBefore => repeat! { self.todo.insert_before(s.clone()) },
+                                InputDestination::NewItemAfter => repeat! { self.todo.insert_after(s.clone()) },
                                 InputDestination::EditItem => list.set_current(s),
                             }
                         }
@@ -625,7 +643,6 @@ impl TodoApp {
         }
         Ok(true)
     }
-
 }
 
 /// A program that acts as a todo list
@@ -655,6 +672,7 @@ impl TodoApp {
             y            ->  Copy an item in the list
             p            ->  Paste an item in the list after the current item
             P            ->  Paste an item in the list before the current item
+            0-9          ->  Set the repitition modifier to a number (doing a command after this will repeat that command
         INSERT MODE:
             Esc          ->  Exit insert mode
             Enter        ->  Add writen todo to list
