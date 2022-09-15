@@ -655,6 +655,14 @@ impl TodoApp {
         }
         Ok(true)
     }
+
+    /// gets repitition modifer and deletes it because it's assuming its being used
+    fn repitition_modifier(&mut self) -> u128 {
+        match &mut self.repitition_modifier.take() {
+            Some(string) => string.parse().unwrap(),
+            None => 1
+        }
+    }
 }
 
 /// A program that acts as a todo list
