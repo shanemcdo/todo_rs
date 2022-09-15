@@ -594,6 +594,7 @@ impl TodoApp {
                             'g' => repeat! { list.move_to_top() },
                             'G' => repeat! { list.move_to_bottom() },
                             's' => repeat! { list.sort() },
+                            // TODO: add ability to copy multiple lines
                             'y' => if let Some(s) = list.clone_current() {
                                 self.clipboard = s;
                             },
