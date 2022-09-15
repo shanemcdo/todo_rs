@@ -598,7 +598,11 @@ impl TodoApp {
                             'y' => if let Some(s) = list.clone_current() {
                                 self.clipboard = s;
                             },
-                            'p' => list.insert_after(self.clipboard.clone()),
+                            // TODO: repeat prints
+                            'p' => {
+                                list.insert_after(self.clipboard.clone());
+                                list.move_down();
+                            },
                             'P' => list.insert_before(self.clipboard.clone()),
                             _ => return Ok(false),
                         }
