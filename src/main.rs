@@ -64,6 +64,13 @@ enum InputMode {
     Insert(InputDestination),
 }
 
+fn use_repitition(repitition: &mut Option<String>) -> u128 {
+    match repitition.take() {
+        Some(s) => s.parse::<u128>().unwrap(),
+        None => 1
+    }
+}
+
 fn print_list(list: &[String]) {
     for line in list {
         println!("{}", line);
@@ -538,10 +545,7 @@ impl TodoApp {
     fn kbin(&mut self) -> crossterm::Result<bool> {
         macro_rules! repeat {
             ($stmt:stmt) => (
-                match self.repitition_modifier.take() {
-                    Some(number) => for _ in 0..number.parse::<u128>().unwrap() { $stmt },
-                    None => { $stmt }
-                }
+                for _ in 0..use_repitition(&mut self.repitition_modifier) { $stmt }
             )
         }
         if event::poll(Duration::from_millis(50))? {
@@ -651,14 +655,6 @@ impl TodoApp {
             }
         }
         Ok(true)
-    }
-
-    /// gets repitition modifer and deletes it because it's assuming its being used
-    fn repitition_modifier(&mut self) -> u128 {
-        match &mut self.repitition_modifier.take() {
-            Some(string) => string.parse().unwrap(),
-            None => 1
-        }
     }
 }
 
