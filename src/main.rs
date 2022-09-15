@@ -301,6 +301,12 @@ impl List {
         self.insert(item, self.current_index);
     }
 
+    fn insert_many_before(&mut self, items: &Vec<String>) {
+        for item in items {
+            self.insert_before(item.clone());
+        }
+    }
+
     fn insert_after(&mut self, item: String) {
         let mut index = self.current_index + 1;
         if index > self.items.len() {
@@ -308,6 +314,12 @@ impl List {
         }
         self.insert(item, index);
         self.move_down()
+    }
+
+    fn insert_many_after(&mut self, items: &Vec<String>) {
+        for item in items {
+            self.insert_after(item.clone());
+        }
     }
 
     fn set_current(&mut self, item: String) {
@@ -374,7 +386,7 @@ struct TodoApp {
     input_string_index: usize,
     terminal_size: (u16, u16),
     one_pane: bool,
-    clipboard: String,
+    clipboard: Vec<String>,
     repitition_modifier: Option<String>,
 }
 
@@ -392,7 +404,7 @@ impl TodoApp {
             input_string_index: 0,
             terminal_size,
             one_pane: terminal_size.0 <= MAX_WIDTH_SINGLE_PANE,
-            clipboard: "".to_string(),
+            clipboard: vec![],
             repitition_modifier: None,
         }
     }
@@ -596,11 +608,17 @@ impl TodoApp {
                             'G' => repeat! { list.move_to_bottom() },
                             's' => repeat! { list.sort() },
                             // TODO: add ability to copy multiple lines
-                            'y' => if let Some(s) = list.clone_current() {
-                                self.clipboard = s;
+                            'y' => {
+                                self.clipboard = vec![];
+                                let index = list.current_index;
+                                for _ in 0..use_repitition(&mut self.repitition_modifier) {
+                                    self.clipboard.append(&mut list.clone_current().into_iter().collect());
+                                    list.move_down();
+                                }
+                                list.current_index = index;
                             },
-                            'p' => repeat! { list.insert_after(self.clipboard.clone()) },
-                            'P' => repeat! { list.insert_before(self.clipboard.clone()) },
+                            'p' => repeat! { list.insert_many_after(&self.clipboard) },
+                            'P' => repeat! { list.insert_many_before(&self.clipboard) },
                             _ => return Ok(false),
                         }
                         _ => return Ok(false),
