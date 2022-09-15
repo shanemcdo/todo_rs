@@ -538,12 +538,9 @@ impl TodoApp {
     fn kbin(&mut self) -> crossterm::Result<bool> {
         macro_rules! repeat {
             ($stmt:stmt) => (
-                if let Some(number) = self.repitition_modifier.take() {
-                    for _ in 0..number.parse::<u128>().unwrap() {
-                        $stmt
-                    }
-                } else {
-                    $stmt
+                match self.repitition_modifier.take() {
+                    Some(number) => for _ in 0..number.parse::<u128>().unwrap() { $stmt },
+                    None => { $stmt }
                 }
             )
         }
