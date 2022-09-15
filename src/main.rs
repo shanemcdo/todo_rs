@@ -554,12 +554,9 @@ impl TodoApp {
                         (KeyCode::Char('O'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemBefore),
                         (KeyCode::Char('o'), ListType::Todo) => self.input_mode = InputMode::Insert(InputDestination::NewItemAfter),
                         (KeyCode::Char(ch), _) => match ch {
-                            '0'..='9' => {
-                                if let Some(string) = &mut self.repitition_modifier {
-                                    string.push(ch);
-                                } else {
-                                    self.repitition_modifier = Some(ch.to_string());
-                                }
+                            '0'..='9' => match &mut self.repitition_modifier {
+                                Some(string) => string.push(ch),
+                                None => self.repitition_modifier = Some(ch.to_string()),
                             }
                             'e' | 'E' => {
                                 self.input_mode = InputMode::Insert(InputDestination::EditItem);
