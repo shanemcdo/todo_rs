@@ -218,6 +218,7 @@ impl List {
         };
     }
 
+    // TODO: OPTIMIZE have move_up/move_down just get the repitition count instead of using repeat macro
     fn move_up(&mut self) {
         let len = self.items.len();
         if len == 0 {
@@ -412,6 +413,19 @@ impl TodoApp {
         }
     }
 
+    fn draw_repitition_modifier(&mut self) -> crossterm::Result<()> {
+        // TODO: Maybe make it so the repitition modifier prints on a blank line <15-09-22, shane>
+        if let Some(string) = &self.repitition_modifier {
+            let y = self.terminal_size.1;
+            queue!(
+                &mut self.stdout,
+                cursor::MoveTo(4, y),
+                Print(string)
+            )?;
+        }
+        Ok(())
+    }
+
     fn redraw(&mut self) -> crossterm::Result<()> {
         self.clear()?;
         match self.input_mode {
@@ -425,6 +439,7 @@ impl TodoApp {
                     self.draw_todo()?;
                     self.draw_done()?;
                 }
+                self.draw_repitition_modifier()?;
                 self.go_to_current_index()?;
             }
             InputMode::Insert(dest) => {
@@ -524,7 +539,7 @@ impl TodoApp {
         macro_rules! repeat {
             ($stmt:stmt) => (
                 if let Some(number) = self.repitition_modifier.take() {
-                    for _ in 0..number.parse::<i32>().unwrap() {
+                    for _ in 0..number.parse::<u128>().unwrap() {
                         $stmt
                     }
                 } else {
